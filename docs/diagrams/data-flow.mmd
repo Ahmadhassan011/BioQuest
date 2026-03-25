@@ -1,0 +1,8 @@
+flowchart LR
+    TDC[PyTDC] --> RAW[data/raw]
+    RAW --> LOAD[Loaders]
+    LOAD --> FEAT[Featurization]
+    FEAT --> PREP[Preparers]
+    PREP --> PROC[data/processed]
+    PROC --> TRAIN[Trainers]
+    TRAIN --> MODELS[trained_models]

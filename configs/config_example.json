@@ -1,0 +1,60 @@
+{
+  "metadata": {
+    "name": "Default BioQuest Configuration",
+    "description": "Example configuration for BioQuest",
+    "version": "1.0.0",
+    "created": "2024-01-15"
+  },
+  "protein_sequence": "MKFLKFSLLTAVLLSVVFAFSSCGDDDDTGLSNEGGHQGIQVQVGVQIENPGIHGVVVPVTLGWQQHHYYSVSTPRGIG",
+  "seeds": [
+    "CC(C)Cc1ccc(cc1)C(C)C(=O)O",
+    "CCCCCCCCCCCC(=O)O",
+    "C1=CC=C(C=C1)C(=O)O"
+  ],
+  "objectives": {
+    "affinity": 0.4,
+    "toxicity": 0.2,
+    "qed": 0.2,
+    "sa": 0.2
+  },
+  "optimization": {
+    "max_iterations": 100,
+    "batch_size": 50,
+    "patience": 20,
+    "plateau_threshold": 0.001,
+    "mutation_rate": 0.3,
+    "crossover_rate": 0.7
+  },
+  "generation": {
+    "vae_enabled": true,
+    "evolutionary_enabled": true,
+    "vae_latent_dim": 64,
+    "vae_hidden_dim": 256,
+    "strategy": "hybrid"
+  },
+  "predictor": {
+    "use_gpu": false,
+    "models_dir": "trained_models",
+    "batch_predict": true
+  },
+  "evaluation": {
+    "use_pareto": true,
+    "convergence_window": 10,
+    "early_stopping": true
+  },
+  "docking": {
+    "enabled": false,
+    "pdb_id": "",
+    "num_modes": 5,
+    "energy_range": 3.0,
+    "exhaustiveness": 8
+  },
+  "output": {
+    "save_results": true,
+    "results_file": "bioquest_results.json",
+    "save_molecules": true,
+    "molecules_file": "molecules.smi",
+    "verbose_logging": true,
+    "log_file": "bioquest.log"
+  }
+}

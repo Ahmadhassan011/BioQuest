@@ -1,0 +1,7 @@
+flowchart TB
+    CLI & WEB --> ORCH[Orchestrator]
+    ORCH --> AGENTS[Generator → Evaluator → Refiner]
+    AGENTS --> OUT[Output]
+    
+    style ORCH fill:#1976d2,color:#fff
+    style AGENTS fill:#e8f5e9

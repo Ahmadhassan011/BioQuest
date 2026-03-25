@@ -1,0 +1,39 @@
+# Core ML Framework
+torch
+torchvision
+
+# Cheminformatics
+rdkit
+
+# Data Science
+numpy
+pandas
+scipy
+
+# Drug Discovery
+pytdc
+deepchem
+
+# Multi-objective Optimization
+pymoo
+
+# UI Framework
+streamlit
+
+# Visualization
+matplotlib
+seaborn
+
+# Utilities
+scikit-learn
+joblib
+pyyaml
+tqdm
+
+# Graph Neural Networks
+torch_geometric
+
+# Development
+pytest
+black
+flake8

@@ -1,0 +1,17 @@
+flowchart LR
+    START([Start]) --> CONFIG
+    CONFIG --> GEN[Generator]
+    GEN --> EVAL[Evaluator]
+    EVAL --> REF[Refiner]
+    REF --> CONV{Converged?}
+    CONV -->|No| GEN
+    CONV -->|Yes| OUT[Pareto Front]
+    OUT --> END([End])
+    
+    style START fill:#e3f2fd
+    style CONFIG fill:#fff3e0
+    style GEN fill:#e8f5e9
+    style EVAL fill:#fce4ec
+    style REF fill:#f3e5f5
+    style CONV fill:#ffecb3
+    style OUT fill:#c8e6c9
