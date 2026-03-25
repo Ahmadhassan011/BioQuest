@@ -15,7 +15,7 @@ BioQuest is an AI system for autonomous drug discovery combining multi-agent orc
 ## Installation
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/Ahmadhassan011/BioQuest.git
 cd BioQuest
 python -m venv .venv
 source .venv/bin/activate

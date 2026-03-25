@@ -28,7 +28,7 @@ This loop repeats until convergence, outputting a Pareto front of optimized drug
 
 ```bash
 # Install
-git clone <repo-url>
+git clone https://github.com/Ahmadhassan011/BioQuest.git
 cd BioQuest
 python -m venv .venv
 source .venv/bin/activate
