@@ -27,11 +27,6 @@ class PropertyPredictor(nn.Module):
     - SA (Synthetic Accessibility): Regression (0-1)
     - LogP (Lipophilicity): Regression (-3 to +5 normalized)
     - MW (Molecular Weight): Regression (0-1 normalized)
-
-    WOW Factor:
-    - Multi-task learning with shared representations
-    - Uncertainty estimation for predictions
-    - Modern normalization and regularization
     """
 
     def __init__(
@@ -100,14 +95,6 @@ class PropertyPredictor(nn.Module):
             nn.Sigmoid(),  # Normalized MW (0-1)
         )
 
-        # Uncertainty estimation heads
-        self.qed_uncertainty = nn.Sequential(
-            nn.Linear(shared_hidden_dim, task_hidden_dim),
-            nn.ReLU(),
-            nn.Linear(task_hidden_dim, 1),
-            nn.Softplus(),
-        )
-
     def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
         """
         Forward pass of property predictor.
@@ -116,7 +103,7 @@ class PropertyPredictor(nn.Module):
             x: Input features of shape (batch_size, input_dim)
 
         Returns:
-            Dictionary of property predictions and uncertainties
+            Dictionary of property predictions
         """
         # Shared encoding
         shared_representation = self.encoder(x)
@@ -128,8 +115,5 @@ class PropertyPredictor(nn.Module):
             "logp": self.logp_decoder(shared_representation),
             "mw": self.mw_decoder(shared_representation),
         }
-
-        # Uncertainty estimates
-        predictions["qed_uncertainty"] = self.qed_uncertainty(shared_representation)
 
         return predictions
