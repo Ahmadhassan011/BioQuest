@@ -265,7 +265,7 @@ def train_property_model(
 
 def main():
     """Main training entry point."""
-    parser = argparse.ArgumentParser(description="Train custom models for AAMD")
+    parser = argparse.ArgumentParser(description="Train custom models for BioQuest")
     parser.add_argument(
         "--models",
         nargs="+",

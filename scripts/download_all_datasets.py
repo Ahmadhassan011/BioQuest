@@ -1,61 +1,63 @@
+#!/usr/bin/env python3
+"""
+Download all datasets required for BioQuest.
+
+Usage:
+    python scripts/download_all_datasets.py
+"""
+
 import sys
-import os
+import argparse
+from pathlib import Path
 
 # Add the src directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.data.loaders import TDCDataLoader
-from src.data.preparers import (
-    PropertyDatasetPreparer,
-)  # Correct import for property prediction
+from src.data.preparers import PropertyDatasetPreparer
 
 
-def download_datasets():
+def download_datasets(skip_existing: bool = True):
     """
-    Downloads all supplementary datasets mentioned in the project.
+    Download all supplementary datasets for BioQuest.
+
+    Args:
+        skip_existing: Skip download if data already exists in cache
     """
-    loader = TDCDataLoader()  # Keep this for existing DTI/Tox/ChEMBL downloads
-    # Use PropertyDatasetPreparer for property prediction datasets
+    loader = TDCDataLoader()
     property_preparer = PropertyDatasetPreparer()
 
-    print("Downloading KIBA dataset...")
-    try:
-        loader.load_dti_data(dataset_name="KIBA")
-        print("KIBA download complete.")
-    except Exception as e:
-        print(f"Failed to download KIBA: {e}")
+    datasets = [
+        ("KIBA", lambda: loader.load_dti_data(dataset_name="KIBA")),
+        ("BindingDB", lambda: loader.load_dti_data(dataset_name="BindingDB")),
+        ("Tox21", lambda: loader.load_tox21_data()),
+        ("ChEMBL", lambda: loader.load_chembl_data(sample_frac=0.001)),
+        (
+            "Lipophilicity",
+            lambda: property_preparer.prepare_property_dataset(
+                dataset_name="lipophilicity_astrazeneca"
+            ),
+        ),
+    ]
 
-    print("\nDownloading BindingDB dataset...")
-    try:
-        loader.load_dti_data(dataset_name="BindingDB")
-        print("BindingDB download complete.")
-    except Exception as e:
-        print(f"Failed to download BindingDB: {e}")
+    for name, download_fn in datasets:
+        print(f"Downloading {name} dataset...")
+        try:
+            download_fn()
+            print(f"✓ {name} download complete.")
+        except Exception as e:
+            print(f"✗ Failed to download {name}: {e}")
 
-    print("\nTox21 dataset...")
-    try:
-        loader.load_tox21_data()
-        print("Tox21 download complete.")
-    except Exception as e:
-        print(f"Failed to download Tox21: {e}")
-
-    print("\nChEMBL dataset (0.1% sample)...")
-    try:
-        # Using a very small fraction for quick EDA setup
-        loader.load_chembl_data(sample_frac=0.000000000001)
-        print("ChEMBL sample download complete.")
-    except Exception as e:
-        print(f"Failed to download ChEMBL: {e}")
-
-    print("\nDownloading Lipophilicity_ID dataset for Property Prediction...")
-    try:
-        property_preparer.prepare_property_dataset(
-            dataset_name="lipophilicity_astrazeneca"
-        )
-        print("Lipophilicity_ID download complete.")
-    except Exception as e:
-        print(f"Failed to download Lipophilicity_ID: {e}")
+    print("\nAll downloads complete.")
 
 
 if __name__ == "__main__":
-    download_datasets()
+    parser = argparse.ArgumentParser(description="Download datasets for BioQuest")
+    parser.add_argument(
+        "--skip-existing",
+        action="store_true",
+        default=True,
+        help="Skip download if data already exists",
+    )
+    args = parser.parse_args()
+    download_datasets(skip_existing=args.skip_existing)

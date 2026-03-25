@@ -40,9 +40,6 @@ python scripts/train_models.py --model gnn_dti --epochs 100
 python scripts/train_models.py --model toxicity --epochs 50
 python scripts/train_models.py --model property --epochs 80
 python scripts/train_models.py --model vae --epochs 50
-
-# Or use shell script
-bash scripts/train.sh
 ```
 
 ---
