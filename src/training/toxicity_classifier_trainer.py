@@ -46,7 +46,7 @@ class ToxicityClassifierTrainer(Trainer):
         super().__init__(model, device, learning_rate, weight_decay)
 
         self.criterion = nn.BCELoss()
-        self.best_val_loss = 0.0  # AUC score should be maximized
+        self.best_val_auc = 0.0
 
         # Initialize training history
         self._initialize_history(
@@ -220,7 +220,7 @@ class ToxicityClassifierTrainer(Trainer):
 
         return {
             "epochs_trained": epoch + 1,
-            "best_val_loss": self.best_val_loss,
+            "best_val_auc": self.best_val_auc,
             "history": self.training_history,
             "checkpoint_path": str(best_model_path),
         }
