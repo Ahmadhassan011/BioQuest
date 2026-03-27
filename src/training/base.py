@@ -19,7 +19,7 @@ import torch.optim as optim
 logger = logging.getLogger(__name__)
 
 
-class Trainer(nn.Module):
+class Trainer:
     """
     Base trainer class with common training infrastructure.
 
@@ -52,7 +52,6 @@ class Trainer(nn.Module):
             learning_rate: Initial learning rate
             weight_decay: L2 regularization coefficient
         """
-        super().__init__()
         self.model = model
         self.device = device
         self.model.to(device)
