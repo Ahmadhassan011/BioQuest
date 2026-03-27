@@ -17,12 +17,6 @@ logger = logging.getLogger(__name__)
 class ModelRegistry:
     """Registry for managing custom trained models."""
 
-    MODELS = {
-        "gnn_dti": None,  # Will be imported in __init__
-        "toxicity": None,
-        "properties": None,
-    }
-
     @staticmethod
     def get_model(model_name: str, **kwargs) -> nn.Module:
         """
