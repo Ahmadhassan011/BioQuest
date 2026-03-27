@@ -115,12 +115,19 @@ class GNNDTIPredictor(nn.Module):
         """
         x, edge_index, batch = data.x, data.edge_index, data.batch
 
-        # Reshape protein_indices for batch processing
         batch_size = data.num_graphs
-        if protein_indices.dim() == 1:
-            expected_len = protein_indices.shape[0]
-            max_prot_len = expected_len // batch_size
-            protein_indices = protein_indices.view(batch_size, max_prot_len)
+        if protein_indices.dim() == 2:
+            if protein_indices.shape[0] != batch_size:
+                raise ValueError(
+                    f"Expected protein_indices to have {batch_size} sequences, "
+                    f"got {protein_indices.shape[0]}"
+                )
+        elif protein_indices.dim() == 1:
+            protein_indices = protein_indices.view(batch_size, -1)
+        else:
+            raise ValueError(
+                f"protein_indices must be 1D or 2D, got {protein_indices.dim()}D"
+            )
 
         # Molecule encoding
         for gcn_layer in self.gcn_layers:
