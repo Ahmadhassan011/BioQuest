@@ -364,13 +364,6 @@ class BioQuestStreamlitUI:
             progress_log = st.empty()
 
             try:
-                # Import components here to avoid circular imports
-                import sys
-
-                sys.path.insert(
-                    0,
-                    "/home/ahmad-hassan/Desktop/ABCX/Semester_05/AI/AI_Drug_Discovery",
-                )
                 from src.app.main import initialize_components, run_optimization_loop
 
                 status_text.write("Initializing components...")
