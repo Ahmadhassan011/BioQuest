@@ -169,7 +169,7 @@ class MultiObjectiveEvaluator:
                 # Check if mol_j dominates mol_i
                 dominates = True
                 for obj in objectives:
-                    if mol_j.get(obj, 0.0) < mol_i.get(obj, 0.0):
+                    if mol_j.get(obj, 0.0) <= mol_i.get(obj, 0.0):
                         dominates = False
                         break
 
