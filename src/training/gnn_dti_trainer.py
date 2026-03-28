@@ -64,20 +64,23 @@ class GNNDTITrainer(Trainer):
     def train_epoch(
         self,
         train_loader: DataLoader,
-        scaler: GradScaler,
-        gradient_accumulation_steps: int,
+        scaler: GradScaler = None,
+        gradient_accumulation_steps: int = 1,
     ) -> float:
         """
-        Train for one epoch with mixed precision and gradient accumulation.
+        Train for one epoch with optional mixed precision and gradient accumulation.
 
         Args:
             train_loader: Training data loader
-            scaler: GradScaler for mixed precision
-            gradient_accumulation_steps: Number of steps to accumulate gradients
+            scaler: GradScaler for mixed precision (optional)
+            gradient_accumulation_steps: Number of steps to accumulate gradients (default: 1)
 
         Returns:
             Average training loss
         """
+        if scaler is None:
+            scaler = GradScaler(enabled=self.device.type == "cuda")
+
         self.model.train()
         total_loss = 0.0
 
