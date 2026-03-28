@@ -13,6 +13,9 @@ import torch.nn.functional as F
 
 logger = logging.getLogger(__name__)
 
+# Default input dimension: Morgan fingerprints (2048 bits) + molecular descriptors (16 features)
+DEFAULT_TOXICITY_INPUT_DIM = 264
+
 
 class ToxicityClassifier(nn.Module):
     """
@@ -33,7 +36,7 @@ class ToxicityClassifier(nn.Module):
 
     def __init__(
         self,
-        input_dim: int = 264,  # Morgan fingerprints + descriptors
+        input_dim: int = DEFAULT_TOXICITY_INPUT_DIM,
         hidden_dims: List[int] = None,
         dropout: float = 0.3,
         use_attention: bool = True,
@@ -42,7 +45,7 @@ class ToxicityClassifier(nn.Module):
         Initialize toxicity classifier.
 
         Args:
-            input_dim: Input feature dimension
+            input_dim: Input feature dimension (default: 264 for Morgan FP + descriptors)
             hidden_dims: Dimensions of hidden layers
             dropout: Dropout probability
             use_attention: Whether to use feature attention
