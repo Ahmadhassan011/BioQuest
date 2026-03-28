@@ -329,8 +329,8 @@ class MoleculePredictor:
     loads and uses custom-trained neural network models for DTI, toxicity,
     and other molecular properties.
 
-    If the required models are not found, it will raise an error to prevent
-    the system from running with unreliable heuristic fallbacks.
+    If the required models are not found, it will fall back to using RDKit
+    oracle heuristics for property prediction.
     """
 
     def __init__(
@@ -355,6 +355,8 @@ class MoleculePredictor:
         self.use_gpu = use_gpu
         self.models_dir = models_dir
         self.oracle = OracleFunction()
+        self._dti_predictor = DTIPredictor(use_gpu=use_gpu)
+        self._toxicity_predictor = ToxicityPredictor(use_gpu=use_gpu)
 
         try:
             from src.models.loader import CustomModelPredictor
@@ -398,14 +400,16 @@ class MoleculePredictor:
                 "mw": properties_nn.get("mw", 0.5),
             }
         else:
-            # Fallback to oracle heuristics
+            # Fallback to RDKit oracle heuristics
             return {
-                "affinity": 0.6,  # Default binding affinity (heuristic)
-                "toxicity": 0.2,  # Default low toxicity (heuristic)
+                "affinity": self._dti_predictor.predict_binding_affinity(
+                    smiles, self.protein_sequence
+                ),
+                "toxicity": self._toxicity_predictor.predict_toxicity(smiles),
                 "qed": OracleFunction.calculate_qed(smiles),
                 "sa": OracleFunction.calculate_sa(smiles),
-                "logp": 0.0,  # Default LogP
-                "mw": 0.5,  # Default MW normalization
+                "logp": 0.0,
+                "mw": 0.5,
             }
 
     def batch_predict(self, smiles_list: List[str]) -> Dict[str, np.ndarray]:
@@ -432,10 +436,12 @@ class MoleculePredictor:
                 "mw": properties_nn_batch.get("mw", np.full(len(smiles_list), 0.5)),
             }
         else:
-            # Fallback to oracle heuristics for batch
+            # Fallback to RDKit oracle heuristics for batch
             return {
-                "affinity": np.full(len(smiles_list), 0.6),  # Default heuristic
-                "toxicity": np.full(len(smiles_list), 0.2),  # Default heuristic
+                "affinity": self._dti_predictor.batch_predict(
+                    smiles_list, self.protein_sequence
+                ),
+                "toxicity": self._toxicity_predictor.batch_predict(smiles_list),
                 "qed": OracleFunction.batch_qed(smiles_list),
                 "sa": OracleFunction.batch_sa(smiles_list),
                 "logp": np.full(len(smiles_list), 0.0),
