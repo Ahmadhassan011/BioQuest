@@ -371,9 +371,17 @@ class HybridMoleculeGenerator:
         self.vae_enabled = vae_enabled and vae_model is not None
         self.evolutionary_enabled = evolutionary_enabled
 
-        # SMILES vocabulary
-        # include backslash as a SMILES character (escape it in the string)
-        self.smiles_chars = "CNOPSFClBrI()[]#=%\\C@H"
+        # SMILES vocabulary - expanded to include all common SMILES characters
+        # Uppercase atoms, lowercase aromatic atoms, digits, special chars
+        self.smiles_chars = (
+            "CNOPSFClBrIBr"  # Uppercase atoms
+            "nops"  # Aromatic atoms
+            "0123456789"  # Ring closures and counts
+            "()[]#"  # Branches and rings
+            "=-+"  # Bond types
+            "/\\@"  # Stereochemistry and chirality
+            "%"  # Double-digit ring closures
+        )
         self.char_to_idx = {c: i for i, c in enumerate(self.smiles_chars)}
         self.idx_to_char = {i: c for c, i in self.char_to_idx.items()}
 
