@@ -12,7 +12,6 @@ import logging
 from typing import Dict, List, Any, Optional, Tuple, TypedDict
 from dataclasses import dataclass, field
 from datetime import datetime
-# import json
 
 logger = logging.getLogger(__name__)
 
@@ -292,6 +291,22 @@ class EvaluatorAgent:
             "history": self.evaluation_history,
         }
 
+    def get_best_molecule(self):
+        """Get best evaluated molecule."""
+        return self.evaluator.get_best_molecule()
+
+    def get_top_molecules(self, k: int = 10):
+        """Get top k molecules."""
+        return self.evaluator.get_top_molecules(k)
+
+    def get_pareto_front(self):
+        """Get Pareto front molecules."""
+        return self.evaluator.get_pareto_front()
+
+    def get_convergence_metrics(self) -> Dict:
+        """Get convergence metrics."""
+        return self.evaluator.get_convergence_metrics()
+
 
 class RefinerAgent:
     """
@@ -490,7 +505,7 @@ class AgentOrchestrator:
 
             # Step 3: Refiner Agent
             logger.info("Step 3: Refiner Agent - Analyzing performance...")
-            best_molecules = self.evaluator.evaluator.get_top_molecules(10)
+            best_molecules = self.evaluator.get_top_molecules(10)
             refinements, ref_msg = self.refiner.analyze_and_refine(
                 [m.to_dict() for m in best_molecules],
                 iteration,
@@ -517,17 +532,13 @@ class AgentOrchestrator:
     def get_final_results(self) -> Dict[str, Any]:
         """Get final optimization results."""
 
-        best = self.evaluator.evaluator.get_best_molecule()
+        best = self.evaluator.get_best_molecule()
 
         return {
             "best_molecule": best.to_dict() if best else None,
-            "top_10": [
-                m.to_dict() for m in self.evaluator.evaluator.get_top_molecules(10)
-            ],
-            "pareto_front": [
-                m.to_dict() for m in self.evaluator.evaluator.get_pareto_front()
-            ],
-            "convergence_metrics": self.evaluator.evaluator.get_convergence_metrics(),
+            "top_10": [m.to_dict() for m in self.evaluator.get_top_molecules(10)],
+            "pareto_front": [m.to_dict() for m in self.evaluator.get_pareto_front()],
+            "convergence_metrics": self.evaluator.get_convergence_metrics(),
             "agent_statistics": {
                 "generator": self.generator.get_statistics(),
                 "evaluator": self.evaluator.get_statistics(),
