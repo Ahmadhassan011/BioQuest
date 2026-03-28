@@ -192,9 +192,9 @@ class RDKitEvolutionaryGenerator:
             try:
                 Chem.SanitizeMol(new_mol)
                 return new_mol
-            except:
+            except ValueError:
                 return mol
-        except:
+        except ValueError:
             return mol
 
     def _remove_bond(self, mol: Chem.Mol) -> Optional[Chem.Mol]:
@@ -211,9 +211,9 @@ class RDKitEvolutionaryGenerator:
             try:
                 Chem.SanitizeMol(new_mol)
                 return new_mol
-            except:
+            except ValueError:
                 return mol
-        except:
+        except (ValueError, IndexError):
             return mol
 
     def _change_atom(self, mol: Chem.Mol) -> Optional[Chem.Mol]:
@@ -234,9 +234,9 @@ class RDKitEvolutionaryGenerator:
             try:
                 Chem.SanitizeMol(new_mol)
                 return new_mol
-            except:
+            except ValueError:
                 return mol
-        except:
+        except (ValueError, IndexError):
             return mol
 
     def _add_ring(self, mol: Chem.Mol) -> Optional[Chem.Mol]:
@@ -260,9 +260,9 @@ class RDKitEvolutionaryGenerator:
             try:
                 Chem.SanitizeMol(new_mol)
                 return new_mol
-            except:
+            except ValueError:
                 return mol
-        except:
+        except ValueError:
             return mol
 
     def _remove_atom(self, mol: Chem.Mol) -> Optional[Chem.Mol]:
@@ -279,9 +279,9 @@ class RDKitEvolutionaryGenerator:
             try:
                 Chem.SanitizeMol(new_mol)
                 return new_mol
-            except:
+            except ValueError:
                 return mol
-        except:
+        except (ValueError, IndexError):
             return mol
 
     def mutate(self, smiles: str) -> Optional[str]:
@@ -340,7 +340,7 @@ class RDKitEvolutionaryGenerator:
 
                 # Simple approach: return parent
                 return Chem.MolToSmiles(parent)
-        except:
+        except ValueError:
             pass
 
         return random.choice([smiles1, smiles2])
@@ -493,7 +493,7 @@ class HybridMoleculeGenerator:
         try:
             mol = Chem.MolFromSmiles(smiles)
             return mol is not None
-        except:
+        except ValueError:
             return False
 
     def _decode_smiles(self, indices: np.ndarray) -> str:
@@ -504,7 +504,7 @@ class HybridMoleculeGenerator:
                 if idx < len(self.idx_to_char):
                     smiles += self.idx_to_char[int(idx)]
             return smiles
-        except:
+        except (ValueError, KeyError, IndexError):
             return ""
 
     def canonicalize_smiles(self, smiles: str) -> Optional[str]:
@@ -522,7 +522,7 @@ class HybridMoleculeGenerator:
             if mol is None:
                 return None
             return Chem.MolToSmiles(mol)
-        except:
+        except ValueError:
             return None
 
     def get_unique_molecules(self, smiles_list: List[str]) -> List[str]:
