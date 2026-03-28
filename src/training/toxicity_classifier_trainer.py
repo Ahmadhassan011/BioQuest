@@ -8,7 +8,18 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from sklearn.metrics import roc_auc_score, f1_score, matthews_corrcoef
+from sklearn.metrics import roc_auc_score, f1_score
+
+try:
+    from sklearn.metrics import matthews_corrcoef
+except ImportError:
+    from sklearn.metrics.cluster import supervised as _mcc_module
+
+    def matthews_corrcoef(y_true, y_pred, *, sample_weight=None, zero_division="warn"):
+        return _mcc_module.matthews_corrcoef(
+            y_true, y_pred, sample_weight=sample_weight
+        )
+
 
 from src.models import ToxicityClassifier
 from src.training.base import Trainer
