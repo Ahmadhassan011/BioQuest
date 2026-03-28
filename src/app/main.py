@@ -90,7 +90,8 @@ def validate_configuration(config: Dict[str, Any]) -> bool:
         return False
 
     # Check iterations
-    max_iterations = config.get("max_iterations", 50)
+    optimization = config.get("optimization", {})
+    max_iterations = optimization.get("max_iterations", 50)
     if max_iterations < 1 or max_iterations > 500:
         logger.error("max_iterations must be between 1 and 500")
         return False
@@ -234,8 +235,9 @@ def run_optimization_loop(
     dataset = components["dataset"]
     seeds = dataset.get_seeds()
     objectives = dataset.get_objectives()
-    max_iterations = config.get("max_iterations", 50)
-    batch_size = config.get("batch_size", 50)
+    optimization = config.get("optimization", {})
+    max_iterations = optimization.get("max_iterations", 50)
+    batch_size = optimization.get("batch_size", 50)
 
     start_time = datetime.now()
 
@@ -483,7 +485,9 @@ def main(args: Optional[List[str]] = None) -> int:
         if parsed_args.seeds:
             config["seeds"] = parsed_args.seeds
         if parsed_args.iterations:
-            config["max_iterations"] = parsed_args.iterations
+            if "optimization" not in config:
+                config["optimization"] = {}
+            config["optimization"]["max_iterations"] = parsed_args.iterations
 
         # Launch UI if requested
         if parsed_args.ui:
