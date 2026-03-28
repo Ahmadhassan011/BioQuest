@@ -496,15 +496,14 @@ class VAEDatasetPreparer:
     ) -> Tuple[np.ndarray, Dict, Dict]:
         """Prepare ChEMBL dataset for VAE training with local caching."""
         suffix = f"frac_{sample_frac}_len_{max_smiles_len}"
-        if DataCache.has_processed_data(
-            "ChEMBL_V29", preparer_type="vae", suffix=suffix
-        ):
+        cache_name = "ChEMBL"
+        if DataCache.has_processed_data(cache_name, preparer_type="vae", suffix=suffix):
             logger.info(
                 f"Loading ChEMBL VAE dataset from cache (sample_frac={sample_frac})..."
             )
             try:
                 cached = DataCache.load_processed_data(
-                    "ChEMBL_V29", preparer_type="vae", suffix=suffix
+                    cache_name, preparer_type="vae", suffix=suffix
                 )
                 if cached is not None:
                     smiles_tensors, splits, metadata = cached
@@ -564,7 +563,7 @@ class VAEDatasetPreparer:
                 smiles_tensors,
                 splits,
                 metadata,
-                "ChEMBL_V29",
+                cache_name,
                 preparer_type="vae",
                 suffix=suffix,
             )
