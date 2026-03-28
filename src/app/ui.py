@@ -224,8 +224,7 @@ class BioQuestStreamlitUI:
                 if total_weight == 0:
                     st.error("Total weight must be > 0")
                 else:
-                    pass
-                    # st.info(f"Total weight: {total_weight:.2f}")
+                    st.info(f"Total weight: {total_weight:.2f}")
 
             with st.expander("Advanced Parameters"):
                 max_iterations = st.number_input(
