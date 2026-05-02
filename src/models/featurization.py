@@ -10,7 +10,7 @@ from typing import List
 import numpy as np
 import torch
 from rdkit import Chem
-from rdkit.Chem import AllChem
+from rdkit.Chem import AllChem, Descriptors, Crippen
 from torch_geometric.data import Data
 
 logger = logging.getLogger(__name__)
@@ -79,8 +79,6 @@ class MolecularFeaturizer:
         morgan_features = np.array(fp, dtype=np.float32)
 
         # RDKit descriptors (8 additional features)
-        from rdkit.Chem import Descriptors, Crippen
-
         mw = min(Descriptors.MolWt(mol) / 500.0, 1.0)  # Normalize to 0-1
         logp = (Crippen.MolLogP(mol) + 3) / 8.0  # Normalize to ~0-1
         hba = min(Descriptors.NumHAcceptors(mol) / 10.0, 1.0)

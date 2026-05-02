@@ -151,10 +151,15 @@ class DataCache:
             json.dump(metadata, f, indent=2)
 
         # Save cache info
+        # Handle both lists (DTI) and tuples (Properties: (features, targets))
+        if isinstance(data_list, tuple):
+            num_samples = len(data_list[0])  # First element contains the data
+        else:
+            num_samples = len(data_list)
         cache_info = {
             "dataset_name": dataset_name,
             "preparer_type": preparer_type,
-            "num_samples": len(data_list),
+            "num_samples": num_samples,
             "train_size": len(splits.get("train", [])),
             "val_size": len(splits.get("val", [])),
             "test_size": len(splits.get("test", [])),
@@ -165,7 +170,7 @@ class DataCache:
         total_size = sum(f.stat().st_size for f in data_dir.glob("*") if f.is_file())
         logger.info(
             f"Processed data cached: {data_dir} "
-            f"({total_size / 1024 / 1024:.2f} MB, {len(data_list)} samples)"
+            f"({total_size / 1024 / 1024:.2f} MB, {num_samples} samples)"
         )
         return data_dir
 

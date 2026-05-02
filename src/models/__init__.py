@@ -14,7 +14,6 @@ from .loader import (
     ModelLoader,
     CustomModelPredictor,
     ModelEvaluator,
-    ModelRegistry,
 )
 from .property import PropertyPredictor
 from .toxicity import ToxicityClassifier
@@ -28,5 +27,4 @@ __all__ = [
     "ModelLoader",
     "CustomModelPredictor",
     "ModelEvaluator",
-    "ModelRegistry",
 ]

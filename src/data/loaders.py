@@ -46,9 +46,14 @@ class ProteinDataHandler:
             max_sequence_length: Maximum allowed protein sequence length
         """
         self.max_sequence_length = max_sequence_length
-        self.valid_amino_acids = set("ACDEFGHIKLMNPQRSTVWY")
-        self.amino_acids = sorted(list(self.valid_amino_acids))
-        self.aa_to_idx = {aa: i for i, aa in enumerate(self.amino_acids)}
+        # Amino acid list must match featurization.py for consistency (1-based, 0=padding)
+        self.amino_acids = [
+            "A", "R", "N", "D", "C", "Q", "E", "G", "H", "I",
+            "L", "K", "M", "F", "P", "S", "T", "W", "Y", "V",
+        ]
+        self.aa_to_idx = {aa: i + 1 for i, aa in enumerate(self.amino_acids)}  # 1..20, 0=padding
+        # Valid AAs + 'X' (unknown) which gets mapped to padding (0)
+        self.valid_amino_acids = set(self.amino_acids) | {"X"}
 
     def validate_protein_sequence(self, sequence: str) -> str:
         """
@@ -72,8 +77,10 @@ class ProteinDataHandler:
             sequence = sequence[: self.max_sequence_length]
 
         sequence = sequence.upper()
+        # Allow 'X' (unknown amino acid) - will be mapped to padding (0)
         if not all(aa in self.valid_amino_acids for aa in sequence):
-            raise ValueError("Sequence contains invalid amino acids")
+            invalid = [aa for aa in sequence if aa not in self.valid_amino_acids]
+            raise ValueError(f"Sequence contains invalid amino acids: {set(invalid)}")
 
         return sequence
 
@@ -153,8 +160,12 @@ class TDCDataLoader:
         cached_data = DataCache.load_raw_data(dataset_name)
         if cached_data is not None:
             logger.info(f"Loaded {dataset_name} from local cache")
-            self.data = cached_data
-            return self.data
+            # Validate cached data format
+            if not hasattr(cached_data, 'shape') and not hasattr(cached_data, 'columns'):
+                logger.warning(f"Cached data for {dataset_name} has invalid format, re-downloading...")
+            else:
+                self.data = cached_data
+                return self.data
 
         try:
             from tdc.multi_pred import DTI
@@ -187,14 +198,21 @@ class TDCDataLoader:
             cached_data = DataCache.load_raw_data("Tox21")
             if cached_data is not None:
                 logger.info("Loaded Tox21 from local cache")
-                self.data = cached_data
-                return self.data
+                # Validate cached data format
+                if not hasattr(cached_data, 'shape') and not hasattr(cached_data, 'columns'):
+                    logger.warning("Cached Tox21 data has invalid format, re-downloading...")
+                else:
+                    self.data = cached_data
+                    return self.data
         else:
             cached_data = DataCache.load_raw_data(f"Tox21_{assay}")
             if cached_data is not None:
                 logger.info(f"Loaded Tox21_{assay} from local cache")
-                self.data = cached_data
-                return self.data
+                if not hasattr(cached_data, 'shape') and not hasattr(cached_data, 'columns'):
+                    logger.warning(f"Cached Tox21_{assay} data has invalid format, re-downloading...")
+                else:
+                    self.data = cached_data
+                    return self.data
 
         try:
             from tdc.single_pred import Tox
@@ -244,15 +262,19 @@ class TDCDataLoader:
         cached_data = DataCache.load_raw_data("ChEMBL")
         if cached_data is not None:
             logger.info("Loaded ChEMBL from local cache")
-            self.data = cached_data
-            if sample_frac < 1.0:
-                self.data = self.data.sample(frac=sample_frac).reset_index(drop=True)
-                logger.info(
-                    f"Sampled {len(self.data)} molecules from ChEMBL (fraction: {sample_frac})"
-                )
+            # Validate cached data format
+            if not hasattr(cached_data, 'shape') and not hasattr(cached_data, 'columns'):
+                logger.warning("Cached ChEMBL data has invalid format, re-downloading...")
             else:
-                logger.info(f"Loaded {len(self.data)} molecules from ChEMBL.")
-            return self.data
+                self.data = cached_data
+                if sample_frac < 1.0:
+                    self.data = self.data.sample(frac=sample_frac).reset_index(drop=True)
+                    logger.info(
+                        f"Sampled {len(self.data)} molecules from ChEMBL (fraction: {sample_frac})"
+                    )
+                else:
+                    logger.info(f"Loaded {len(self.data)} molecules from ChEMBL.")
+                return self.data
 
         try:
             from tdc.generation import MolGen

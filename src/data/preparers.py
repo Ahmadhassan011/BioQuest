@@ -79,7 +79,7 @@ class DTIDatasetPreparer:
         dataset_name: str = "DAVIS",
         val_split: float = 0.1,
         test_split: float = 0.1,
-        max_prot_len: int = 512,
+        max_prot_len: int = 1024,  # Increased from 512 to reduce truncation (67% -> 18%)
     ) -> Tuple[List[Any], Dict, Dict]:
         """
         Prepare DTI dataset from PyTDC with local caching.
@@ -121,11 +121,21 @@ class DTIDatasetPreparer:
             if dti_data is None or len(dti_data) == 0:
                 raise ValueError(f"Failed to load {dataset_name} dataset")
 
+            # Filter out censored data (Y=10000 indicates "below detection limit")
+            original_len = len(dti_data)
+            dti_data = dti_data[dti_data["Y"] < 10000].copy()
+            filtered_len = len(dti_data)
+            if filtered_len < original_len:
+                logger.warning(
+                    f"Filtered out {original_len - filtered_len} censored samples "
+                    f"(Y=10000) from {dataset_name}"
+                )
+
             smiles_list = dti_data["Drug"].tolist()
             protein_seqs = dti_data["Target"].tolist()
             affinities = dti_data["Y"].tolist()
 
-            logger.info(f"Loaded {len(smiles_list)} DTI interactions")
+            logger.info(f"Loaded {len(smiles_list)} DTI interactions after filtering")
 
             logger.info(
                 f"Featurizing molecules and proteins (truncating proteins to {max_prot_len})..."
@@ -160,11 +170,7 @@ class DTIDatasetPreparer:
                 data.y = torch.tensor([affinity], dtype=torch.float)
                 data_list.append(data)
 
-            all_affinities = np.array([data.y.item() for data in data_list])
-            min_aff, max_aff = np.min(all_affinities), np.max(all_affinities)
-            for data in data_list:
-                data.y = (data.y - min_aff) / (max_aff - min_aff + 1e-10)
-
+            # Split first, then normalize using ONLY training set statistics (prevent data leakage)
             n_samples = len(data_list)
             indices = np.arange(n_samples)
             np.random.shuffle(indices)
@@ -178,13 +184,20 @@ class DTIDatasetPreparer:
 
             splits = {"train": train_idx, "val": val_idx, "test": test_idx}
 
+            # Normalize using ONLY training set affinities (prevent data leakage)
+            train_affinities = np.array([data_list[i].y.item() for i in train_idx])
+            min_aff, max_aff = np.min(train_affinities), np.max(train_affinities)
+            
+            for data in data_list:
+                data.y = (data.y - min_aff) / (max_aff - min_aff + 1e-10)
+
             metadata = {
                 "dataset_name": dataset_name,
                 "total_samples": n_samples,
                 "atom_feature_dim": data_list[0].x.shape[1],
                 "protein_max_length": max_prot_len,
-                "affinity_min": float(min_aff),
-                "affinity_max": float(max_aff),
+                "affinity_min": float(min_aff),  # Training set min for normalization
+                "affinity_max": float(max_aff),  # Training set max for normalization
             }
 
             logger.info(
@@ -354,15 +367,26 @@ class PropertyDatasetPreparer:
                 )
                 if cached is not None:
                     features, targets, splits, metadata = cached
+                    # targets is either a list [qed, sa, logp, mw] from cache,
+                    # or already a dict from older cache format
                     if isinstance(targets, list):
+                        # Convert cached lists to tensors
                         targets_dict = {
                             "qed": torch.tensor(targets[0], dtype=torch.float),
                             "sa": torch.tensor(targets[1], dtype=torch.float),
                             "logp": torch.tensor(targets[2], dtype=torch.float),
                             "mw": torch.tensor(targets[3], dtype=torch.float),
                         }
-                    else:
+                    elif isinstance(targets, dict):
                         targets_dict = targets
+                    else:
+                        # Assume it's a tuple/array that needs conversion
+                        targets_dict = {
+                            "qed": torch.tensor(targets[0], dtype=torch.float),
+                            "sa": torch.tensor(targets[1], dtype=torch.float),
+                            "logp": torch.tensor(targets[2], dtype=torch.float),
+                            "mw": torch.tensor(targets[3], dtype=torch.float),
+                        }
                     logger.info(
                         f"Dataset loaded from cache: train={len(splits['train'])}, "
                         f"val={len(splits['val'])}, test={len(splits['test'])}"
