@@ -70,6 +70,14 @@ def create_data_loaders(
         test_loader = TorchDataLoader(
             test_dataset, batch_size=batch_size, shuffle=False
         )
+    elif dataset_type == "toxicity":
+        train_loader = TorchDataLoader(
+            train_dataset, batch_size=batch_size, shuffle=True, drop_last=True
+        )
+        val_loader = TorchDataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+        test_loader = TorchDataLoader(
+            test_dataset, batch_size=batch_size, shuffle=False
+        )
     else:
         raise ValueError(f"Unknown dataset_type: {dataset_type}")
 
