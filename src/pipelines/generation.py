@@ -185,6 +185,9 @@ class RDKitEvolutionaryGenerator:
                 return mol
 
             atom1, atom2 = random.sample(atoms, 2)
+            if mol.GetBondBetweenAtoms(atom1, atom2):
+                return mol
+
             editable_mol = Chem.EditableMol(mol)
             editable_mol.AddBond(atom1, atom2, Chem.BondType.SINGLE)
             new_mol = editable_mol.GetMol()
@@ -250,11 +253,13 @@ class RDKitEvolutionaryGenerator:
             atom1, atom2 = random.sample(atoms, 2)
 
             editable_mol = Chem.EditableMol(mol)
-            # Add intermediate atom to form ring
-            editable_mol.AddAtom(Chem.Atom(6))
-            new_atom_idx = editable_mol.GetMol().GetNumAtoms() - 1
-            editable_mol.AddBond(atom1, new_atom_idx, Chem.BondType.SINGLE)
-            editable_mol.AddBond(new_atom_idx, atom2, Chem.BondType.SINGLE)
+            new_atom_idx = editable_mol.AddAtom(Chem.Atom(6))
+
+            if not mol.GetBondBetweenAtoms(atom1, atom2):
+                editable_mol.AddBond(atom1, new_atom_idx, Chem.BondType.SINGLE)
+                editable_mol.AddBond(new_atom_idx, atom2, Chem.BondType.SINGLE)
+            else:
+                return mol
 
             new_mol = editable_mol.GetMol()
             try:

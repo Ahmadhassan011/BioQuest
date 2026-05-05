@@ -259,6 +259,15 @@ class Tox21DatasetPreparer:
             filtered_data = tox_data[tox_data["assay"] == assay].copy()
             assay_data = filtered_data[["Drug", "Y"]].dropna()
 
+            # Filter out invalid SMILES (too short or cannot be parsed by RDKit)
+            from rdkit import Chem
+            valid_mask = assay_data["Drug"].apply(lambda x: Chem.MolFromSmiles(x) is not None)
+            original_count = len(assay_data)
+            assay_data = assay_data[valid_mask].reset_index(drop=True)
+            filtered_count = len(assay_data)
+            if filtered_count < original_count:
+                logger.warning(f"Filtered out {original_count - filtered_count} invalid SMILES (too short or invalid)")
+
             smiles_list = assay_data["Drug"].tolist()
             labels = assay_data["Y"].to_numpy(dtype=np.float32)
 

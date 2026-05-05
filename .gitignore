@@ -70,6 +70,7 @@ training_results/
 trained_models/
 checkpoints/
 !trained_models/.gitkeep
+bioquest_results.json
 
 # Data
 data/raw/
