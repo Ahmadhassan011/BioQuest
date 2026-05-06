@@ -52,7 +52,7 @@ PyTDC → loaders → featurization → preparers → training → trained_model
 - **RefinerAgent**: Optimizes and ranks candidates
 
 ### src/pipelines/
-- **generation.py**: HybridMoleculeGenerator, MoleculeVAE
+- **generation.py**: HybridMoleculeGenerator
 - **prediction.py**: MoleculePredictor wraps all models
 - **optimization.py**: Pareto front selection, weighted sum
 
@@ -60,6 +60,7 @@ PyTDC → loaders → featurization → preparers → training → trained_model
 - **gnn_dti.py**: GNNDTIPredictor (1.2M params)
 - **toxicity.py**: ToxicityClassifier (540K params)
 - **property.py**: PropertyPredictor (380K params)
+- **vae.py**: MoleculeVAE (300K params)
 - **featurization.py**: Morgan fingerprints, RDKit descriptors
 
 ### src/training/

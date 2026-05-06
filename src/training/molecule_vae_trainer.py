@@ -8,7 +8,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from src.pipelines.generation import MoleculeVAE
+from src.models.vae import MoleculeVAE
 from src.training.base import Trainer
 
 logger = logging.getLogger(__name__)

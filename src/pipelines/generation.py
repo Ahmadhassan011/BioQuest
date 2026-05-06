@@ -1,10 +1,9 @@
 """
-Generator Module: Hybrid molecule generation using RDKit evolutionary algorithms and PyTorch VAE.
+Generator Module: Hybrid molecule generation using RDKit evolutionary algorithms.
 
 This module provides:
-- Variational Autoencoder (VAE) for molecule generation in latent space
 - RDKit-based evolutionary algorithms for guided exploration
-- Hybrid generation combining both approaches
+- Hybrid generation combining VAE and evolutionary approaches
 - SMILES validity checking and canonicalization
 """
 
@@ -12,148 +11,12 @@ import logging
 from typing import List, Tuple, Optional
 import numpy as np
 import torch
-import torch.nn as nn
 from rdkit import Chem
 import random
 
+from src.models.vae import MoleculeVAE
+
 logger = logging.getLogger(__name__)
-
-
-class MoleculeVAE(nn.Module):
-    """Variational Autoencoder for molecule generation."""
-
-    def __init__(
-        self,
-        vocab_size: int = 100,
-        embedding_dim: int = 128,
-        hidden_dim: int = 256,
-        latent_dim: int = 64,
-    ):
-        """
-        Initialize Molecule VAE.
-
-        Args:
-            vocab_size: Size of SMILES character vocabulary
-            embedding_dim: Embedding dimension for characters
-            hidden_dim: Hidden dimension for encoder/decoder
-            latent_dim: Latent space dimension
-        """
-        super().__init__()
-        self.vocab_size = vocab_size
-        self.embedding_dim = embedding_dim
-        self.hidden_dim = hidden_dim
-        self.latent_dim = latent_dim
-
-        # Encoder
-        self.embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.encoder_gru = nn.GRU(embedding_dim, hidden_dim, batch_first=True)
-        self.fc_mu = nn.Linear(hidden_dim, latent_dim)
-        self.fc_logvar = nn.Linear(hidden_dim, latent_dim)
-
-        # Decoder
-        self.decoder_input = nn.Linear(latent_dim, hidden_dim)
-        self.decoder_gru = nn.GRU(latent_dim, hidden_dim, batch_first=True)
-        self.fc_out = nn.Linear(hidden_dim, vocab_size)
-
-    def encode(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Encode molecule to latent space.
-
-        Args:
-            x: Input tensor of SMILES encoded as integers
-
-        Returns:
-            Tuple of (mu, logvar) representing mean and log-variance
-        """
-        embedded = self.embedding(x)
-        _, hidden = self.encoder_gru(embedded)
-        mu = self.fc_mu(hidden.squeeze(0))
-        logvar = self.fc_logvar(hidden.squeeze(0))
-        return mu, logvar
-
-    def reparameterize(self, mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:
-        """
-        Reparameterization trick for sampling from latent distribution.
-
-        Args:
-            mu: Mean of distribution
-            logvar: Log-variance of distribution
-
-        Returns:
-            Sampled latent vector
-        """
-        std = torch.exp(0.5 * logvar)
-        eps = torch.randn_like(std)
-        return mu + eps * std
-
-    def _decode_tokens(self, z: torch.Tensor, max_len: int = 100) -> torch.Tensor:
-        """
-        Decode latent vector to molecule tokens (for inference).
-
-        Args:
-            z: Latent vector of shape (batch_size, latent_dim)
-            max_len: Maximum length of generated molecule
-
-        Returns:
-            Generated molecule as encoded tensor of token IDs, shape (batch_size, max_len)
-        """
-        batch_size = z.size(0)
-        hidden = torch.tanh(self.decoder_input(z)).unsqueeze(0)
-
-        output_tokens = []
-        current_input = z.unsqueeze(1)  # maintain original behavior for input to GRU
-
-        for _ in range(max_len):
-            gru_out, hidden = self.decoder_gru(current_input, hidden)
-            logits = self.fc_out(hidden.squeeze(0))
-            token = logits.argmax(dim=-1)
-            output_tokens.append(token.unsqueeze(1))
-
-        return torch.cat(output_tokens, dim=1)  # (batch_size, max_len)
-
-    def decode(self, z: torch.Tensor, max_len: int = 100) -> torch.Tensor:
-        """
-        Decode latent vector to sequence of logits (for training).
-
-        Args:
-            z: Latent vector of shape (batch_size, latent_dim)
-            max_len: Maximum length of the decoded sequence
-
-        Returns:
-            Logits for each token at each position, shape (batch_size, max_len, vocab_size)
-        """
-        batch_size = z.size(0)
-        hidden = torch.tanh(self.decoder_input(z)).unsqueeze(0)
-
-        all_logits = []
-        current_input = z.unsqueeze(1)
-
-        for _ in range(max_len):
-            gru_out, hidden = self.decoder_gru(current_input, hidden)
-            logits = self.fc_out(hidden.squeeze(0))
-            all_logits.append(logits.unsqueeze(1))
-
-        return torch.cat(all_logits, dim=1)  # (batch_size, max_len, vocab_size)
-
-    def forward(
-        self, x: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """
-        Forward pass through VAE.
-
-        Args:
-            x: Input SMILES tensor (used as target for reconstruction during training)
-
-        Returns:
-            Tuple of (reconstructed_logits, mu, logvar)
-        """
-        mu, logvar = self.encode(x)
-        z = self.reparameterize(mu, logvar)
-        # For training, we need the logits to calculate cross-entropy loss
-        reconstructed_logits = self.decode(
-            z, max_len=x.size(1)
-        )  # Use input sequence length for max_len
-        return reconstructed_logits, mu, logvar
 
 
 class RDKitEvolutionaryGenerator:

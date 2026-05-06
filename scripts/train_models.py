@@ -22,8 +22,8 @@ from src.models import (
     GNNDTIPredictor,
     ToxicityClassifier,
     PropertyPredictor,
+    MoleculeVAE,
 )
-from src.pipelines.generation import MoleculeVAE
 from src.training import (
     GNNDTITrainer,
     ToxicityClassifierTrainer,

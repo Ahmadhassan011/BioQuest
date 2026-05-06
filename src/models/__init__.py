@@ -17,11 +17,13 @@ from .loader import (
 )
 from .property import PropertyPredictor
 from .toxicity import ToxicityClassifier
+from .vae import MoleculeVAE
 
 __all__ = [
     "GNNDTIPredictor",
     "ToxicityClassifier",
     "PropertyPredictor",
+    "MoleculeVAE",
     "MolecularFeaturizer",
     "MultiHeadAttention",
     "ModelLoader",
