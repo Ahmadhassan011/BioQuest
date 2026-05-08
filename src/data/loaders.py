@@ -26,8 +26,15 @@ import logging
 from typing import List, Dict, Optional
 import numpy as np
 import pandas as pd
-# Lazy-import TDC modules inside functions to avoid import-time failures
-# when PyTDC is not installed or API differs across versions.
+
+from src.data.constants import (
+    AMINO_ACIDS,
+    AA_TO_IDX,
+    VALID_AA_SET,
+    DEFAULT_MAX_PROTEIN_LENGTH,
+    validate_sequence,
+    sequence_to_indices,
+)
 
 from src.data.storage import DataCache
 
@@ -38,7 +45,7 @@ logger = logging.getLogger(__name__)
 class ProteinDataHandler:
     """Handles protein sequence loading, validation, and storage."""
 
-    def __init__(self, max_sequence_length: int = 2000):
+    def __init__(self, max_sequence_length: int = DEFAULT_MAX_PROTEIN_LENGTH):
         """
         Initialize protein data handler.
 
@@ -46,14 +53,6 @@ class ProteinDataHandler:
             max_sequence_length: Maximum allowed protein sequence length
         """
         self.max_sequence_length = max_sequence_length
-        # Amino acid list must match featurization.py for consistency (1-based, 0=padding)
-        self.amino_acids = [
-            "A", "R", "N", "D", "C", "Q", "E", "G", "H", "I",
-            "L", "K", "M", "F", "P", "S", "T", "W", "Y", "V",
-        ]
-        self.aa_to_idx = {aa: i + 1 for i, aa in enumerate(self.amino_acids)}  # 1..20, 0=padding
-        # Valid AAs + 'X' (unknown) which gets mapped to padding (0)
-        self.valid_amino_acids = set(self.amino_acids) | {"X"}
 
     def validate_protein_sequence(self, sequence: str) -> str:
         """
@@ -66,37 +65,29 @@ class ProteinDataHandler:
             The validated and potentially truncated sequence string.
             Raises ValueError if sequence contains invalid amino acids or is not a string.
         """
-        if not isinstance(sequence, str):
-            raise ValueError("Protein sequence must be a string")
+        return validate_sequence(sequence, self.max_sequence_length)
 
-        original_length = len(sequence)
-        if original_length > self.max_sequence_length:
-            logger.warning(
-                f"Sequence length {original_length} exceeds max {self.max_sequence_length}. Truncating sequence."
-            )
-            sequence = sequence[: self.max_sequence_length]
-
-        sequence = sequence.upper()
-        # Allow 'X' (unknown amino acid) - will be mapped to padding (0)
-        if not all(aa in self.valid_amino_acids for aa in sequence):
-            invalid = [aa for aa in sequence if aa not in self.valid_amino_acids]
-            raise ValueError(f"Sequence contains invalid amino acids: {set(invalid)}")
-
-        return sequence
-
-    def prepare_protein_indices(self, sequence: str) -> np.ndarray:
+    def prepare_protein_indices(self, sequence: str, max_len: int = None) -> np.ndarray:
         """
         Convert protein sequence to an array of indices.
 
         Args:
             sequence: Protein sequence string
+            max_len: Maximum length for padding (defaults to max_sequence_length)
 
         Returns:
             A numpy array of amino acid indices.
         """
+        if max_len is None:
+            max_len = self.max_sequence_length
         validated_sequence = self.validate_protein_sequence(sequence)
 
-        indices = [self.aa_to_idx.get(aa, 0) for aa in validated_sequence]
+        indices = [AA_TO_IDX.get(aa, 0) for aa in validated_sequence]
+
+        if len(indices) < max_len:
+            indices = indices + [0] * (max_len - len(indices))
+        elif len(indices) > max_len:
+            indices = indices[:max_len]
 
         return np.array(indices, dtype=np.int64)
 
@@ -433,7 +424,7 @@ class BioQuestDataset:
 
 
 # Module-level utilities
-def create_dataset(
+def create_bioquest_dataset(
     protein_sequence: str,
     seed_smiles: List[str],
     objectives: Dict[str, float],

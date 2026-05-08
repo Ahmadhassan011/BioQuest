@@ -17,7 +17,7 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime
 import argparse
 import subprocess
-from src.data import create_dataset
+from src.data import create_dti_dataset
 from src.pipelines.prediction import MoleculePredictor
 from src.pipelines.generation import HybridMoleculeGenerator
 from src.pipelines.optimization import OptimizationEvaluator
@@ -117,7 +117,7 @@ def initialize_components(config: Dict[str, Any]) -> Dict[str, Any]:
     try:
         # Step 1: Create dataset
         logger.info("Step 1/5: Creating dataset...")
-        dataset_result = create_dataset(
+        dataset_result = create_dti_dataset(
             protein_sequence=config["protein_sequence"],
             seed_smiles=config["seeds"],
             objectives=config["objectives"],

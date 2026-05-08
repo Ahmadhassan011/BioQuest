@@ -141,7 +141,7 @@ class MolecularFeaturizer:
             features.append(self.featurize_molecule(smiles))
         return np.array(features, dtype=np.float32)
 
-    def featurize_protein(self, sequence: str, max_len: int = 512) -> np.ndarray:
+    def featurize_protein(self, sequence: str, max_len: int = 1024) -> np.ndarray:
         """
         Convert a protein amino-acid sequence into integer token indices suitable
         for embedding layers. Uses 20 standard amino acids mapped to 1..20 and
@@ -154,32 +154,10 @@ class MolecularFeaturizer:
         Returns:
             Numpy array of shape (max_len,) with dtype int64 containing indices
         """
-        aa_list = [
-            "A",
-            "R",
-            "N",
-            "D",
-            "C",
-            "Q",
-            "E",
-            "G",
-            "H",
-            "I",
-            "L",
-            "K",
-            "M",
-            "F",
-            "P",
-            "S",
-            "T",
-            "W",
-            "Y",
-            "V",
-        ]
-        aa_to_idx = {aa: i + 1 for i, aa in enumerate(aa_list)}  # 1..20, 0=padding
+        from src.data.constants import AA_TO_IDX
 
         seq = sequence.upper() if sequence is not None else ""
-        indices = [aa_to_idx.get(ch, 0) for ch in seq]
+        indices = [AA_TO_IDX.get(ch, 0) for ch in seq]
 
         # Truncate or pad
         if len(indices) >= max_len:

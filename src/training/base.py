@@ -7,11 +7,16 @@ Provides:
 - Gradient clipping
 - Checkpoint save/load
 - Training history tracking
+
+Subclass contract:
+- train_epoch(loader, epoch=None) -> metrics dict or float
+- validate/validate_epoch(loader) -> metrics dict
+- fit(train_loader, val_loader, ...) -> results dict
 """
 
 import logging
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional, Union
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -31,9 +36,9 @@ class Trainer:
     - Early stopping logic
 
     All trainer subclasses must implement:
-    - train_epoch(loader)
-    - validate(loader)
-    - fit(train_loader, val_loader, ...)
+    - train_epoch(loader, epoch=None) - returns metrics dict or float
+    - validate(loader) or validate_epoch(loader, epoch=None) - returns metrics dict
+    - fit(train_loader, val_loader, ...) - returns results dict
     """
 
     def __init__(

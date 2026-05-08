@@ -32,7 +32,7 @@ class ToxicityClassifierTrainer(Trainer):
     Trainer for toxicity classification model.
 
     Features:
-    - Binary classification with BCE loss
+    - Binary classification with weighted BCE loss (handles class imbalance)
     - ROC-AUC monitoring
     - Early stopping based on validation metrics
     - Gradient clipping for stability
@@ -44,6 +44,7 @@ class ToxicityClassifierTrainer(Trainer):
         device: torch.device,
         learning_rate: float = 1e-3,
         weight_decay: float = 1e-5,
+        pos_weight: float = None,
     ):
         """
         Initialize toxicity trainer.
@@ -53,10 +54,12 @@ class ToxicityClassifierTrainer(Trainer):
             device: Training device
             learning_rate: Initial learning rate
             weight_decay: L2 regularization
+            pos_weight: Positive class weight for imbalance (default: auto-computed)
         """
         super().__init__(model, device, learning_rate, weight_decay)
 
-        self.criterion = nn.BCELoss()
+        self.pos_weight = pos_weight
+        self.criterion = None  # Set after computing pos_weight
         self.best_val_auc = 0.0
 
         # Initialize training history
@@ -71,6 +74,30 @@ class ToxicityClassifierTrainer(Trainer):
             ]
         )
 
+    def _init_criterion(self, train_loader: DataLoader):
+        """Compute pos_weight from training data and initialize weighted loss."""
+        if self.pos_weight is not None or self.criterion is not None:
+            return
+
+        labels = []
+        for features, target in train_loader:
+            labels.append(target)
+        all_labels = torch.cat(labels)
+
+        n_neg = (all_labels == 0).sum().item()
+        n_pos = (all_labels == 1).sum().item()
+
+        if n_pos > 0:
+            self.pos_weight = n_neg / n_pos
+            logger.info(
+                f"Class imbalance detected: neg={n_neg}, pos={n_pos}, "
+                f"pos_weight={self.pos_weight:.2f}"
+            )
+        else:
+            self.pos_weight = 1.0
+
+        self.criterion = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([self.pos_weight]).to(self.device))
+
     def train_epoch(self, train_loader: DataLoader) -> float:
         """
         Train for one epoch.
@@ -81,6 +108,7 @@ class ToxicityClassifierTrainer(Trainer):
         Returns:
             Average training loss
         """
+        self._init_criterion(train_loader)
         self.model.train()
         total_loss = 0.0
 
@@ -90,8 +118,8 @@ class ToxicityClassifierTrainer(Trainer):
             labels = labels.to(self.device).unsqueeze(1)
 
             self.optimizer.zero_grad()
-            predictions = self.model(features)
-            loss = self.criterion(predictions, labels)
+            logits = self.model(features, return_logits=True)
+            loss = self.criterion(logits, labels)
 
             loss.backward()
             self._clip_gradients(max_norm=1.0)
@@ -122,14 +150,16 @@ class ToxicityClassifierTrainer(Trainer):
                 features = features.to(self.device)
                 labels = labels.to(self.device).unsqueeze(1)
 
-                predictions = self.model(features)
-                loss = self.criterion(predictions, labels)
+                logits = self.model(features, return_logits=True)  # Model returns raw logits
+                loss = self.criterion(logits, labels) if self.criterion else None
 
-                total_loss += loss.item()
-                all_preds.extend(predictions.cpu().numpy().flatten())
+                if loss:
+                    total_loss += loss.item()
+                probs = torch.sigmoid(logits)  # Convert logits to probabilities
+                all_preds.extend(probs.cpu().numpy().flatten())
                 all_labels.extend(labels.cpu().numpy().flatten())
 
-        avg_loss = total_loss / len(val_loader)
+        avg_loss = total_loss / len(val_loader) if total_loss > 0 else 0.0
 
         all_preds = np.array(all_preds)
         all_labels = np.array(all_labels)
@@ -216,6 +246,7 @@ class ToxicityClassifierTrainer(Trainer):
             )
 
             if self.patience_counter == 0:
+                self.best_val_auc = val_metrics["auc"]
                 self._save_checkpoint(
                     "toxicity",
                     best_model_path,

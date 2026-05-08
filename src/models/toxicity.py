@@ -88,12 +88,13 @@ class ToxicityClassifier(nn.Module):
         # Output layer
         self.output_layer = nn.Linear(prev_dim, 1)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, return_logits: bool = False) -> torch.Tensor:
         """
         Forward pass of toxicity classifier.
 
         Args:
             x: Input features of shape (batch_size, input_dim)
+            return_logits: If True, return raw logits; if False, return sigmoid probabilities
 
         Returns:
             Toxicity predictions of shape (batch_size, 1)
@@ -122,7 +123,10 @@ class ToxicityClassifier(nn.Module):
             if residual.shape == hidden.shape:
                 hidden = hidden + residual
 
-        # Output with sigmoid
-        output = torch.sigmoid(self.output_layer(hidden))
+        # Output (raw logits for BCEWithLogitsLoss, or sigmoid for inference)
+        logits = self.output_layer(hidden)
+        if return_logits:
+            return logits
+        return torch.sigmoid(logits)
 
         return output

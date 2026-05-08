@@ -184,20 +184,29 @@ class DTIDatasetPreparer:
 
             splits = {"train": train_idx, "val": val_idx, "test": test_idx}
 
-            # Normalize using ONLY training set affinities (prevent data leakage)
+            # Apply log transformation to handle extreme scale (issue #27)
+            # DAVIS range: 0.016 to 10,000 (625,000x scale difference)
             train_affinities = np.array([data_list[i].y.item() for i in train_idx])
-            min_aff, max_aff = np.min(train_affinities), np.max(train_affinities)
-            
+
+            # Log transform with small offset to handle near-zero values
+            train_log_affinities = np.log10(train_affinities + 1e-6)
+            log_min = np.min(train_log_affinities)
+            log_max = np.max(train_log_affinities)
+
             for data in data_list:
-                data.y = (data.y - min_aff) / (max_aff - min_aff + 1e-10)
+                y_log = np.log10(data.y.item() + 1e-6)
+                data.y = (y_log - log_min) / (log_max - log_min + 1e-10)
 
             metadata = {
                 "dataset_name": dataset_name,
                 "total_samples": n_samples,
                 "atom_feature_dim": data_list[0].x.shape[1],
                 "protein_max_length": max_prot_len,
-                "affinity_min": float(min_aff),  # Training set min for normalization
-                "affinity_max": float(max_aff),  # Training set max for normalization
+                "affinity_transform": "log10",
+                "affinity_log_min": float(log_min),
+                "affinity_log_max": float(log_max),
+                "affinity_original_min": float(np.min(train_affinities)),
+                "affinity_original_max": float(np.max(train_affinities)),
             }
 
             logger.info(
@@ -336,8 +345,9 @@ class PropertyDatasetPreparer:
         self.tpsa_min, self.tpsa_max = 0.0, 200.0
 
     def _normalize_logp(self, logp: float) -> float:
-        """Normalizes LogP to range [-1, 1]."""
-        return 2 * ((logp - self.logp_min) / (self.logp_max - self.logp_min)) - 1
+        """Normalizes LogP to range [-1, 1] using log transform for better distribution (issue #29)."""
+        logp_shifted = logp + 3.0
+        return 2 * (np.log1p(logp_shifted) / np.log1p(8.0)) - 1
 
     def _normalize_mw(self, mw: float) -> float:
         """Normalizes Molecular Weight to range [0, 1]."""
