@@ -92,35 +92,44 @@ class ModelLoader:
             logger.error(f"DTI model checkpoint not found at {model_path}")
             raise FileNotFoundError(f"DTI model checkpoint not found at {model_path}")
         else:
-            # Initialize model with same architecture used during training
-            model = GNNDTIPredictor(
-                atom_feature_dim=atom_feature_dim,
-                gcn_hidden_dim=128,
-                protein_embedding_dim=64,
-                protein_hidden_dim=128,  # MUST MATCH training.py which uses 128
-                interaction_hidden_dim=256,
-                num_gcn_layers=2,
-                num_interaction_layers=3,
-                num_heads=8,
-                dropout=0.2,
-            )
-            model.to(self.device)
-
             checkpoint = torch.load(
                 model_path, map_location=self.device, weights_only=False
             )
+
+            arch_config = checkpoint.get("model_config", {})
+            metrics = checkpoint.get("metrics", {})
+
+            if arch_config:
+                logger.info(f"Loading DTI model with saved architecture: {arch_config}")
+                model = GNNDTIPredictor(**arch_config)
+            else:
+                logger.warning(
+                    "No architecture config in checkpoint, using defaults. "
+                    "This may cause shape mismatches if training used different params."
+                )
+                model = GNNDTIPredictor(
+                    atom_feature_dim=atom_feature_dim,
+                    gcn_hidden_dim=128,
+                    protein_embedding_dim=64,
+                    protein_hidden_dim=128,
+                    interaction_hidden_dim=256,
+                    num_gcn_layers=2,
+                    num_interaction_layers=3,
+                    num_heads=8,
+                    dropout=0.2,
+                )
+            model.to(self.device)
+
             state = checkpoint.get("model_state_dict", checkpoint)
             try:
                 model.load_state_dict(state)
-                logger.info(f"Loaded DTI model from {model_path} (strict load)")
+                logger.info(f"Loaded DTI model from {model_path}")
             except Exception as e:
-                logger.warning(
-                    f"Strict state_dict load failed for DTI model: {e}. Trying non-strict load."
-                )
+                logger.warning(f"State dict load failed: {e}. Trying non-strict load.")
                 load_res = model.load_state_dict(state, strict=False)
                 logger.info(
-                    f"DTI model loaded with non-strict load. Missing keys: {load_res.missing_keys}, "
-                    f"Unexpected keys: {load_res.unexpected_keys}"
+                    f"Loaded with non-strict. Missing: {load_res.missing_keys[:5]}, "
+                    f"Unexpected: {load_res.unexpected_keys[:5]}"
                 )
 
         model.eval()

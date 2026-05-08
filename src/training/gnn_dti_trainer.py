@@ -232,7 +232,17 @@ class GNNDTITrainer(Trainer):
             )
 
             if self.patience_counter == 0:
-                # Save best model
+                # Save best model with architecture config
+                model_config = {
+                    "atom_feature_dim": self.model.gcn_layers[0].in_channels,
+                    "gcn_hidden_dim": self.model.gcn_layers[0].out_channels,
+                    "protein_embedding_dim": self.model.protein_embedding.embedding_dim,
+                    "protein_hidden_dim": self.model.protein_lstm.hidden_size,
+                    "interaction_hidden_dim": self.model.interaction_layers[0].out_features,
+                    "num_gcn_layers": len(self.model.gcn_layers),
+                    "num_interaction_layers": len(self.model.interaction_layers),
+                    "dropout": self.model.dropout.p,
+                }
                 self._save_checkpoint(
                     "gnn_dti",
                     best_model_path,
@@ -241,6 +251,7 @@ class GNNDTITrainer(Trainer):
                         "train_loss": train_loss,
                         **val_metrics,
                     },
+                    model_config=model_config,
                 )
 
             if not should_continue:

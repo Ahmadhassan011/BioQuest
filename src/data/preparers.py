@@ -1,13 +1,22 @@
 """
 Data Preparation Module: Custom datasets and dataset preparers.
 
+Standardized return format:
+    All preparers return: Tuple[data, splits, metadata]
+
+    - DTI: Tuple[List[Data], Dict, Dict]           (list of PyG Data objects)
+    - Tox21: Tuple[np.ndarray, np.ndarray, Dict]    (features, labels, metadata)
+    - Properties: Tuple[torch.Tensor, Dict, Dict] (features, targets dict, metadata)
+    - VAE: Tuple[np.ndarray, Dict, Dict]           (tokenized SMILES, metadata)
+
 DATA CACHING:
     Processed datasets are automatically cached to <project_root>/data/processed/
     to avoid re-featurization. Subsequent runs load from cache unless cache is cleared.
 """
 
 import logging
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Dict, List, Tuple, Optional, Any, Union
+from dataclasses import dataclass
 
 import numpy as np
 import torch
@@ -23,6 +32,32 @@ from src.data.storage import DataCache
 from src.models.featurization import MolecularFeaturizer
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class DatasetResult:
+    """Standardized container for dataset preparation results."""
+
+    data: Union[List, np.ndarray, torch.Tensor]
+    splits: Dict[str, Any]
+    metadata: Dict[str, Any]
+    data_type: str  # "dti", "tox21", "properties", "vae"
+
+    @property
+    def train_size(self) -> int:
+        return len(self.splits.get("train", []))
+
+    @property
+    def val_size(self) -> int:
+        return len(self.splits.get("val", []))
+
+    @property
+    def test_size(self) -> int:
+        return len(self.splits.get("test", []))
+
+    @property
+    def total_samples(self) -> int:
+        return self.metadata.get("total_samples", len(self.data))
 
 
 class DTIGraphDataset(Dataset):

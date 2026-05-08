@@ -62,6 +62,7 @@ def create_model_checkpoint(
     epoch: int,
     metrics: Dict[str, float],
     save_path: str,
+    model_config: Dict = None,
 ) -> None:
     """
     Create and save model checkpoint.
@@ -73,11 +74,13 @@ def create_model_checkpoint(
         epoch: Current epoch
         metrics: Training metrics
         save_path: Path to save checkpoint
+        model_config: Architecture configuration for loading later
     """
     checkpoint = {
         "model_name": model_name,
         "epoch": epoch,
         "model_state_dict": model.state_dict(),
+        "model_config": model_config or {},
         "optimizer_state_dict": optimizer.state_dict(),
         "metrics": metrics,
         "timestamp": datetime.now().isoformat(),

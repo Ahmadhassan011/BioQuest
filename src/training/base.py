@@ -93,6 +93,7 @@ class Trainer:
         model_name: str,
         checkpoint_path: Path,
         metadata: Dict[str, Any] = None,
+        model_config: Dict = None,
     ):
         """
         Save model checkpoint.
@@ -101,6 +102,7 @@ class Trainer:
             model_name: Name identifier for model
             checkpoint_path: Path to save checkpoint
             metadata: Additional metadata to save, including 'epoch'
+            model_config: Architecture configuration for loading
         """
         from src.models.registry import create_model_checkpoint
 
@@ -115,6 +117,7 @@ class Trainer:
             epoch=epoch,
             metrics=metrics,
             save_path=str(checkpoint_path),
+            model_config=model_config or {},
         )
         logger.info(f"Checkpoint saved to {checkpoint_path}")
 

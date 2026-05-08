@@ -51,7 +51,7 @@ def validate_sequence(sequence: str, max_length: int = DEFAULT_MAX_PROTEIN_LENGT
 
 def sequence_to_indices(sequence: str, max_len: int) -> List[int]:
     """
-    Convert protein sequence to index list.
+    Convert protein sequence to index list with padding.
 
     Args:
         sequence: Protein sequence string
@@ -61,4 +61,11 @@ def sequence_to_indices(sequence: str, max_len: int) -> List[int]:
         List of amino acid indices (1-20, 0=padding)
     """
     validated = validate_sequence(sequence, max_len)
-    return [AA_TO_IDX.get(aa, 0) for aa in validated]
+    indices = [AA_TO_IDX.get(aa, 0) for aa in validated]
+
+    if len(indices) < max_len:
+        indices = indices + [0] * (max_len - len(indices))
+    elif len(indices) > max_len:
+        indices = indices[:max_len]
+
+    return indices
