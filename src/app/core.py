@@ -536,7 +536,7 @@ class AgentOrchestrator:
 
         return {
             "best_molecule": best.to_dict() if best else None,
-            "top_10": [m.to_dict() for m in self.evaluator.get_top_molecules(10)],
+            "top_5": [m.to_dict() for m in self.evaluator.get_top_molecules(5)],
             "pareto_front": [m.to_dict() for m in self.evaluator.get_pareto_front()],
             "convergence_metrics": self.evaluator.get_convergence_metrics(),
             "agent_statistics": {
@@ -547,5 +547,4 @@ class AgentOrchestrator:
             "total_iterations": self.iteration_count,
             "total_molecules_generated": self.generator.molecules_generated,
             "total_molecules_evaluated": self.evaluator.molecules_evaluated,
-            "messages_exchanged": len(self.message_log),
         }

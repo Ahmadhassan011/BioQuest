@@ -13,11 +13,11 @@ Coordinates all components:
 import logging
 import sys
 import json
+from pathlib import Path
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 import argparse
 import subprocess
-from src.data import create_dti_dataset
 from src.pipelines.prediction import MoleculePredictor
 from src.pipelines.generation import HybridMoleculeGenerator
 from src.pipelines.optimization import OptimizationEvaluator
@@ -28,12 +28,15 @@ from src.app.core import (
     AgentOrchestrator,
 )
 
-# Configure logging
+def get_log_path() -> Path:
+    """Get log file path, defaulting to project root."""
+    return Path(__file__).parent.parent.parent / "bioquest.log"
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler("bioquest.log"),
+        logging.FileHandler(str(get_log_path())),
         logging.StreamHandler(sys.stdout),
     ],
 )
@@ -96,8 +99,22 @@ def validate_configuration(config: Dict[str, Any]) -> bool:
         logger.error("max_iterations must be between 1 and 500")
         return False
 
-    logger.info("✓ Configuration validated successfully")
+    logger.info("Configuration validated successfully")
     return True
+
+
+class OptimizationDataset:
+    """Simple dataset container for optimization."""
+
+    def __init__(self, seeds: List[str], objectives: Dict[str, float]):
+        self._seeds = seeds
+        self._objectives = objectives
+
+    def get_seeds(self) -> List[str]:
+        return self._seeds
+
+    def get_objectives(self) -> Dict[str, float]:
+        return self._objectives
 
 
 def initialize_components(config: Dict[str, Any]) -> Dict[str, Any]:
@@ -116,45 +133,15 @@ def initialize_components(config: Dict[str, Any]) -> Dict[str, Any]:
 
     try:
         # Step 1: Create dataset
-        logger.info("Step 1/5: Creating dataset...")
-        dataset_result = create_dti_dataset(
-            protein_sequence=config["protein_sequence"],
-            seed_smiles=config["seeds"],
+        logger.info("Step 1/5: Creating optimization dataset...")
+        dataset = OptimizationDataset(
+            seeds=config["seeds"],
             objectives=config["objectives"],
         )
-
-        # Unpack dataset result (returns tuple: data_list, splits, metadata)
-        if isinstance(dataset_result, tuple):
-            data_list, splits, metadata = dataset_result
-            train_size = (
-                len(splits.get("train", []))
-                if isinstance(splits.get("train"), list)
-                else splits.get("train", 0)
-            )
-            val_size = (
-                len(splits.get("val", []))
-                if isinstance(splits.get("val"), list)
-                else splits.get("val", 0)
-            )
-            test_size = (
-                len(splits.get("test", []))
-                if isinstance(splits.get("test"), list)
-                else splits.get("test", 0)
-            )
-            logger.info(
-                f"✓ Dataset created: {len(data_list)} samples (train={train_size}, val={val_size}, test={test_size})"
-            )
-            dataset = type(
-                "Dataset",
-                (),
-                {
-                    "get_seeds": lambda self: config["seeds"],
-                    "get_objectives": lambda self: config["objectives"],
-                },
-            )()
-        else:
-            dataset = dataset_result
-            logger.info("Dataset created")
+        logger.info(
+            f"Dataset created: {len(config['seeds'])} seeds, "
+            f"objectives: {list(config['objectives'].keys())}"
+        )
 
         # Step 2: Initialize predictor
         logger.info("Step 2/5: Initializing molecular predictor...")
@@ -164,7 +151,7 @@ def initialize_components(config: Dict[str, Any]) -> Dict[str, Any]:
             models_dir=config.get("models_dir", "trained_models"),
         )
         logger.info(
-            "✓ Predictor initialized (using custom trained models with heuristic fallback)"
+            "Predictor initialized (using custom trained models with heuristic fallback)"
         )
 
         # Step 3: Initialize generator
@@ -174,7 +161,7 @@ def initialize_components(config: Dict[str, Any]) -> Dict[str, Any]:
             evolutionary_enabled=config.get("evolutionary_enabled", True),
             device="cuda" if config.get("use_gpu", False) else "cpu",
         )
-        logger.info("✓ Generator initialized (RDKit + VAE hybrid)")
+        logger.info("Generator initialized (RDKit + VAE hybrid)")
 
         # Step 4: Initialize evaluator
         logger.info("Step 4/5: Initializing evaluator...")
@@ -183,7 +170,7 @@ def initialize_components(config: Dict[str, Any]) -> Dict[str, Any]:
             plateau_threshold=config.get("plateau_threshold", 0.001),
             patience=config.get("patience", 20),
         )
-        logger.info("✓ Evaluator initialized (multi-objective + convergence)")
+        logger.info("Evaluator initialized (multi-objective + convergence)")
 
         # Step 5: Initialize agents
         logger.info("Step 5/5: Initializing agent orchestrator...")
@@ -191,10 +178,10 @@ def initialize_components(config: Dict[str, Any]) -> Dict[str, Any]:
         eval_agent = EvaluatorAgent(predictor, evaluator)
         ref_agent = RefinerAgent(evaluator)
         orchestrator = AgentOrchestrator(gen_agent, eval_agent, ref_agent)
-        logger.info("✓ Agents initialized (Generator, Evaluator, Refiner)")
+        logger.info("Agents initialized (Generator, Evaluator, Refiner)")
 
         logger.info("\n" + "=" * 70)
-        logger.info("✓ ALL COMPONENTS INITIALIZED SUCCESSFULLY")
+        logger.info("ALL COMPONENTS INITIALIZED SUCCESSFULLY")
         logger.info("=" * 70 + "\n")
 
         return {
@@ -298,13 +285,13 @@ def print_results_summary(results: Dict[str, Any]) -> None:
     # Best molecule
     best = results.get("best_molecule")
     if best:
-        logger.info("🏆 BEST MOLECULE:")
-        logger.info(f"   SMILES: {best['smiles']}")
-        logger.info(f"   Affinity: {best['affinity']:.4f}")
-        logger.info(f"   Toxicity: {best['toxicity']:.4f} (lower is better)")
-        logger.info(f"   QED: {best['qed']:.4f}")
-        logger.info(f"   SA: {best['sa']:.4f}")
-        logger.info(f"   Composite Score: {best['composite_score']:.4f}")
+        logger.info("BEST MOLECULE:")
+        logger.info(f"   SMILES: {best.get('smiles', 'N/A')}")
+        logger.info(f"   Affinity: {best.get('affinity', 0.0):.4f}")
+        logger.info(f"   Toxicity: {best.get('toxicity', 0.0):.4f} (lower is better)")
+        logger.info(f"   QED: {best.get('qed', 0.0):.4f}")
+        logger.info(f"   SA: {best.get('sa', 0.0):.4f}")
+        logger.info(f"   Composite Score: {best.get('composite_score', 0.0):.4f}")
 
     # Statistics
     stats = results.get("agent_statistics", {})
@@ -315,12 +302,12 @@ def print_results_summary(results: Dict[str, Any]) -> None:
     logger.info(f"   Execution Time: {results.get('execution_time_formatted')}")
 
     # Top 5 molecules
-    top_5 = results.get("top_10", [])[:5]
+    top_5 = results.get("top_5", [])[:5]
     if top_5:
-        logger.info("\n🥇 TOP 5 MOLECULES:")
+        logger.info("\nTOP 5 MOLECULES:")
         for i, mol in enumerate(top_5, 1):
             logger.info(
-                f"   #{i}: {mol['smiles'][:50]}... (Score: {mol['composite_score']:.4f})"
+                f"   #{i}: {mol.get('smiles', 'N/A')[:50]}... (Score: {mol.get('composite_score', 0.0):.4f})"
             )
 
     # Convergence metrics
@@ -352,7 +339,7 @@ def save_results(results: Dict[str, Any], output_file: str) -> None:
     try:
         with open(output_file, "w") as f:
             json.dump(results, f, indent=2, default=str)
-        logger.info(f"✓ Results saved to {output_file}")
+        logger.info("Results saved to %s", output_file)
     except Exception as e:
         logger.error(f"Failed to save results: {e}")
 
@@ -360,38 +347,37 @@ def save_results(results: Dict[str, Any], output_file: str) -> None:
 def print_ethical_notice() -> None:
     """Print ethical considerations notice."""
     logger.info("""
-    
-╔════════════════════════════════════════════════════════════════════════════════╗
-║                         ETHICAL CONSIDERATIONS                                 ║
-╠════════════════════════════════════════════════════════════════════════════════╣
-║                                                                                ║
-║ This BioQuest (BioQuest) is designed for research                              ║
-║ purposes only. Users and researchers must understand and acknowledge:          ║
-║                                                                                ║
-║ 1. VALIDATION REQUIREMENT:                                                     ║
-║    - Generated molecules MUST undergo rigorous experimental validation         ║
-║    - In silico predictions are approximations and require wet-lab testing      ║
-║    - No molecule should be synthesized or tested without proper review         ║
-║                                                                                ║
-║ 2. RESPONSIBLE CONDUCT:                                                        ║
-║    - Use results only for legitimate drug discovery research                   ║
-║    - Follow institutional ethics boards and regulatory guidelines              ║
-║    - Maintain transparency in methodology and limitations                      ║
-║                                                                                ║
-║ 3. LIMITATIONS:                                                                ║
-║    - Model predictions are probabilistic and may have high error rates         ║
-║    - Off-target effects and ADME properties require additional testing         ║
-║    - This tool does not predict clinical efficacy or safety profiles           ║
-║                                                                                ║
-║ 4. DUAL-USE CONSIDERATIONS:                                                    ║
-║    - This system must not be used for synthesis of harmful compounds           ║
-║    - Report misuse to appropriate authorities immediately                      ║
-║                                                                                ║
-║ By using BioQuest, you agree to use this technology responsibly and ethically. ║
-║ The authors assume no liability for misuse or harm resulting from this tool.   ║
-║                                                                                ║
-╚════════════════════════════════════════════════════════════════════════════════╝
-    
+    ================================================================================
+                             ETHICAL CONSIDERATIONS
+    ================================================================================
+
+    This BioQuest is designed for research purposes only. Users and researchers
+    must understand and acknowledge:
+
+    1. VALIDATION REQUIREMENT:
+       - Generated molecules MUST undergo rigorous experimental validation
+       - In silico predictions are approximations and require wet-lab testing
+       - No molecule should be synthesized or tested without proper review
+
+    2. RESPONSIBLE CONDUCT:
+       - Use results only for legitimate drug discovery research
+       - Follow institutional ethics boards and regulatory guidelines
+       - Maintain transparency in methodology and limitations
+
+    3. LIMITATIONS:
+       - Model predictions are probabilistic and may have high error rates
+       - Off-target effects and ADME properties require additional testing
+       - This tool does not predict clinical efficacy or safety profiles
+
+    4. DUAL-USE CONSIDERATIONS:
+       - This system must not be used for synthesis of harmful compounds
+       - Report misuse to appropriate authorities immediately
+
+    By using BioQuest, you agree to use this technology responsibly and ethically.
+    The authors assume no liability for misuse or harm resulting from this tool.
+
+    ================================================================================
+
     """)
 
 
