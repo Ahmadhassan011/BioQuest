@@ -29,15 +29,16 @@ class ModelRegistry:
         Returns:
             Instantiated model
         """
-        # Import here to avoid circular imports
         from .gnn_dti import GNNDTIPredictor
         from .toxicity import ToxicityClassifier
         from .property import PropertyPredictor
+        from .vae import MoleculeVAE
 
         models = {
             "gnn_dti": GNNDTIPredictor,
             "toxicity": ToxicityClassifier,
             "properties": PropertyPredictor,
+            "vae": MoleculeVAE,
         }
 
         if model_name not in models:
@@ -51,7 +52,7 @@ class ModelRegistry:
     @staticmethod
     def list_models() -> List[str]:
         """List all available models."""
-        return ["gnn_dti", "toxicity", "properties"]
+        return ["gnn_dti", "toxicity", "properties", "vae"]
 
 
 def create_model_checkpoint(

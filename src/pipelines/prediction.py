@@ -84,11 +84,14 @@ class DTIPredictor:
         """
         try:
             if self.model is not None:
-                # Use pre-trained model if available
-                affinity = self.model.predict([[smiles, protein_seq]])[0][0]
-                return float(np.clip(affinity, 0, 1))
+                raise NotImplementedError(
+                    "Pre-trained DTI model loading is deprecated. "
+                    "Use CustomModelPredictor from src.models.loader instead."
+                )
+        except NotImplementedError:
+            raise
         except Exception as e:
-            logger.warning(f"Model prediction failed: {e}")
+            logger.debug(f"Model not available: {e}")
 
         # Fallback: heuristic based on molecular properties
         mol = Chem.MolFromSmiles(smiles)

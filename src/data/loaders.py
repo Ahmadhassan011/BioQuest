@@ -371,11 +371,14 @@ class BioQuestDataset:
         Returns:
             True if valid and set, False otherwise
         """
-        if self.protein_handler.validate_protein_sequence(sequence):
-            self.protein_sequence = sequence.upper()
-            logger.info(f"Set protein sequence (length: {len(sequence)})")
+        try:
+            validated_sequence = self.protein_handler.validate_protein_sequence(sequence)
+            self.protein_sequence = validated_sequence.upper()
+            logger.info(f"Set protein sequence (length: {len(self.protein_sequence)})")
             return True
-        return False
+        except ValueError as e:
+            logger.warning(f"Invalid protein sequence: {e}")
+            return False
 
     def add_seeds(self, smiles_list: List[str]) -> None:
         """Add seed molecules."""

@@ -12,6 +12,7 @@ All data stored in: <project_root>/data/ directory
 import logging
 import pickle
 import json
+import shutil
 from pathlib import Path
 from typing import Any, Dict, Optional
 import numpy as np
@@ -257,8 +258,6 @@ class DataCache:
 
             # Delete all processed variants
             for processed_dir in PROCESSED_DATA_DIR.glob(f"{dataset_name}_*"):
-                import shutil
-
                 shutil.rmtree(processed_dir)
                 logger.info(f"Deleted processed data cache: {processed_dir}")
         else:
@@ -266,8 +265,6 @@ class DataCache:
                 for raw_file in RAW_DATA_DIR.glob("*.pkl"):
                     raw_file.unlink()
                 logger.info("Cleared all raw data cache")
-
-            import shutil
 
             for processed_dir in PROCESSED_DATA_DIR.glob("*"):
                 shutil.rmtree(processed_dir)

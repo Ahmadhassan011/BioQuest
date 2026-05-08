@@ -166,10 +166,12 @@ class MultiObjectiveEvaluator:
                 if i == j:
                     continue
 
-                # Check if mol_j dominates mol_i
+                # Check if mol_j dominates mol_i (Pareto dominance)
+                # mol_j dominates mol_i if: mol_j >= mol_i on all objectives AND mol_j > mol_i on at least one
                 dominates = True
                 for obj in objectives:
-                    if mol_j.get(obj, 0.0) <= mol_i.get(obj, 0.0):
+                    # mol_j must be >= mol_i on all objectives (strictly greater or equal)
+                    if mol_j.get(obj, 0.0) < mol_i.get(obj, 0.0):
                         dominates = False
                         break
 
