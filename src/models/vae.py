@@ -115,7 +115,6 @@ class MoleculeVAE(nn.Module):
         Returns:
             Logits for each token at each position, shape (batch_size, max_len, vocab_size)
         """
-        batch_size = z.size(0)
         hidden = torch.tanh(self.decoder_input(z)).unsqueeze(0)
 
         all_logits = []

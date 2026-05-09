@@ -6,7 +6,6 @@ Handles molecule generation using Variational Autoencoder.
 
 import logging
 from typing import List, Optional
-import numpy as np
 import torch
 from pathlib import Path
 

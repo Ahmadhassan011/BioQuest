@@ -5,7 +5,7 @@ Orchestrates all model predictions for molecules.
 """
 
 import logging
-from typing import Dict, List, Union
+from typing import Dict, List
 import numpy as np
 
 from .dti import DTIPredictor, ModelNotLoadedError as DTIErr

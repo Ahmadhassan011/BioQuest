@@ -325,13 +325,13 @@ def example_performance_timing():
     logger = setup_logging("timing_example")
     perf_logger = get_performance_logger()
 
-    with PerformanceTimer(logger, "Data loading") as timer:
+    with PerformanceTimer(logger, "Data loading"):
         # Simulate work
         import time
 
         time.sleep(0.1)
 
-    with PerformanceTimer(perf_logger, "Model training", level="INFO") as timer:
+    with PerformanceTimer(perf_logger, "Model training", level="INFO"):
         import time
 
         time.sleep(0.2)

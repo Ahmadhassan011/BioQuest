@@ -7,12 +7,10 @@ Features:
 """
 
 import logging
-import json
 import torch
-from typing import Dict, Optional, List, Any
+from typing import Dict, Optional, List
 from pathlib import Path
 import numpy as np
-from datetime import datetime
 
 from .gnn_dti import GNNDTIPredictor
 from .toxicity import ToxicityClassifier
@@ -90,7 +88,6 @@ class ModelLoader:
             )
 
             arch_config = checkpoint.get("model_config", {})
-            metrics = checkpoint.get("metrics", {})
 
             if arch_config:
                 logger.info(f"Loading DTI model with saved architecture: {arch_config}")

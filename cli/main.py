@@ -219,7 +219,7 @@ def main(args=None):
     if not seeds:
         seeds = ["CCO", "c1ccccc1", "CC(=O)O", "CC", "C"]
 
-    logger.info(f"BioQuest CLI initialized")
+    logger.info("BioQuest CLI initialized")
     logger.info(f"Protein: {protein_seq[:30]}...")
     logger.info(f"Seeds: {len(seeds)} molecules")
     logger.info(f"Max iterations: {max_iterations}")

@@ -8,7 +8,7 @@ Subclass contract:
 
 import logging
 from pathlib import Path
-from typing import Dict, Any, Optional, Union
+from typing import Dict, Any
 import torch
 import torch.nn as nn
 import torch.optim as optim

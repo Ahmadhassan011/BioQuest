@@ -6,7 +6,7 @@ to the MoleculePredictor and OptimizationEvaluator.
 """
 
 import logging
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Tuple
 from datetime import datetime
 
 from .messages import AgentMessage

@@ -160,7 +160,6 @@ class PropertyDatasetPreparer(BasePreparer):
                     continue
 
                 qed = Descriptors.qed(mol)
-                tpsa = Descriptors.TPSA(mol)
                 logp = Descriptors.MolLogP(mol)
                 mw = Descriptors.MolWt(mol)
 

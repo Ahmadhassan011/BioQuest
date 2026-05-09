@@ -3,7 +3,6 @@ Pytest configuration and shared fixtures for BioQuest tests.
 """
 
 import pytest
-import numpy as np
 import torch
 
 

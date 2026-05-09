@@ -6,7 +6,6 @@ API endpoints for molecule prediction and optimization.
 
 import logging
 import time
-from typing import Dict, List
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware

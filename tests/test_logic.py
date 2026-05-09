@@ -1,6 +1,5 @@
 """Tests for algorithm and logic components."""
 
-import pytest
 import numpy as np
 
 
