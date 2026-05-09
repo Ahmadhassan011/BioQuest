@@ -8,10 +8,13 @@ import logging
 from typing import Dict, List
 import numpy as np
 
+from rdkit import Chem
+
 from .dti import DTIPredictor, ModelNotLoadedError as DTIErr
 from .toxicity import ToxicityPredictor, ModelNotLoadedError as ToxErr
 from .property import PropertyPredictor, ModelNotLoadedError as PropErr
 from .vae import VAEGenerator
+from ..evaluation.admet import compute_admet_properties, check_lipinski_rule_of_five
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +81,8 @@ class MoleculePredictor:
             smiles: Molecule SMILES string
 
         Returns:
-            Dictionary with affinity, toxicity, QED, SA, logp, mw
+            Dictionary with affinity, toxicity, QED, SA, logp, mw,
+            plus ADMET properties (hba, hbd, tpsa, etc.) and Lipinski rules.
 
         Raises:
             ValueError: If SMILES is invalid
@@ -88,6 +92,13 @@ class MoleculePredictor:
         toxicity = self._toxicity.predict(smiles)
         properties = self._property.predict(smiles)
 
+        mol = Chem.MolFromSmiles(smiles)
+        admet = {}
+        lipinski = {}
+        if mol is not None:
+            admet = compute_admet_properties(smiles)
+            lipinski = check_lipinski_rule_of_five(admet)
+
         return {
             "affinity": affinity,
             "toxicity": toxicity,
@@ -95,6 +106,10 @@ class MoleculePredictor:
             "sa": properties["sa"],
             "logp": properties["logp"],
             "mw": properties["mw"],
+            **{k: admet.get(k) for k in ["hba", "hbd", "tpsa", "num_rings",
+                "num_aromatic_rings", "num_rotatable_bonds", "num_heavy_atoms",
+                "fraction_csp3"]},
+            **lipinski,
         }
 
     def batch_predict(self, smiles_list: List[str]) -> Dict[str, np.ndarray]:

@@ -26,6 +26,7 @@ def run_optimization(
     max_iterations: int = 50,
     batch_size: int = 50,
     output: str = "bioquest_results.json",
+    ablation: str = "full",
 ) -> dict:
     """
     Run molecule optimization.
@@ -37,6 +38,7 @@ def run_optimization(
         max_iterations: Maximum optimization iterations
         batch_size: Batch size for evaluation
         output: Output file path
+        ablation: Ablation mode ("full", "no_refiner", "no_generator", "single_pass")
 
     Returns:
         Results dictionary
@@ -78,6 +80,7 @@ def run_optimization(
         generator_agent=generator,
         evaluator_agent=evaluator_agent,
         refiner_agent=refiner,
+        ablation_mode=ablation,
     )
 
     start_time = time.time()
@@ -179,6 +182,16 @@ def main(args=None):
     )
 
     parser.add_argument(
+        "--ablation",
+        type=str,
+        default="full",
+        choices=["full", "no_refiner", "no_generator", "single_pass"],
+        help="Ablation mode: full (all agents), no_refiner (skip RefinerAgent), "
+             "no_generator (use seeds only, skip generation), "
+             "single_pass (one iteration only)",
+    )
+
+    parser.add_argument(
         "--verbose",
         action="store_true",
         help="Enable verbose logging",
@@ -232,6 +245,7 @@ def main(args=None):
             max_iterations=max_iterations,
             batch_size=batch_size,
             output=parsed_args.output,
+            ablation=parsed_args.ablation,
         )
 
         if "error" in results:

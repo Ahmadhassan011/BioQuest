@@ -28,6 +28,7 @@ class AgentOrchestrator:
         generator_agent: GeneratorAgent,
         evaluator_agent: EvaluatorAgent,
         refiner_agent: RefinerAgent,
+        ablation_mode: str = "full",
     ):
         """
         Initialize agent orchestrator.
@@ -36,16 +37,22 @@ class AgentOrchestrator:
             generator_agent: GeneratorAgent instance
             evaluator_agent: EvaluatorAgent instance
             refiner_agent: RefinerAgent instance
+            ablation_mode: One of "full", "no_refiner", "no_generator", "single_pass".
+                "full" — all three agents.
+                "no_refiner" — skip RefinerAgent (no strategy switching, no termination check).
+                "no_generator" — use VAE only, skip evolutionary generation.
+                "single_pass" — run one generation + evaluation pass, no iterative loop.
         """
         self.generator = generator_agent
         self.evaluator = evaluator_agent
         self.refiner = refiner_agent
+        self.ablation_mode = ablation_mode
         self.name = "AgentOrchestrator"
 
         self.message_log: List[AgentMessage] = []
         self.iteration_count = 0
 
-        logger.info("AgentOrchestrator initialized with 3 agents")
+        logger.info(f"AgentOrchestrator initialized (mode={ablation_mode})")
 
     def run_iteration(
         self,
@@ -74,21 +81,28 @@ class AgentOrchestrator:
         logger.info(f"ITERATION {iteration}/{max_iterations}")
         logger.info(f"{'=' * 60}\n")
 
+        if self.ablation_mode == "single_pass" and iteration > 1:
+            return False, "Single pass ablation — one iteration only"
+
         try:
             # Step 1: Generator Agent
-            logger.info("Step 1: Generator Agent - Creating new molecules...")
-            strategy = "hybrid" if iteration == 0 else self.refiner.current_strategy
-            molecules, gen_msg = self.generator.generate_batch(
-                seeds, batch_size, strategy
-            )
-            self.message_log.append(gen_msg)
-
-            if not molecules:
-                logger.warning("No molecules generated, attempting retry...")
+            if self.ablation_mode == "no_generator":
+                molecules = list(seeds)
+                logger.info(f"Step 1 skipped (ablation): using {len(molecules)} seeds as generation")
+            else:
+                logger.info("Step 1: Generator Agent - Creating new molecules...")
+                strategy = "hybrid" if iteration == 0 else self.refiner.current_strategy
                 molecules, gen_msg = self.generator.generate_batch(
-                    seeds, batch_size, "evolutionary"
+                    seeds, batch_size, strategy
                 )
                 self.message_log.append(gen_msg)
+
+                if not molecules:
+                    logger.warning("No molecules generated, attempting retry...")
+                    molecules, gen_msg = self.generator.generate_batch(
+                        seeds, batch_size, "evolutionary"
+                    )
+                    self.message_log.append(gen_msg)
 
             # Step 2: Evaluator Agent
             logger.info("Step 2: Evaluator Agent - Evaluating molecules...")
@@ -100,6 +114,10 @@ class AgentOrchestrator:
                 return False, "Evaluation failed"
 
             # Step 3: Refiner Agent
+            if self.ablation_mode == "no_refiner":
+                logger.info("Step 3 skipped (ablation): no refiner analysis")
+                return True, "Continuing optimization"
+
             logger.info("Step 3: Refiner Agent - Analyzing performance...")
             best_molecules = self.evaluator.get_top_molecules(10)
             refinements, ref_msg = self.refiner.analyze_and_refine(

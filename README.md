@@ -141,6 +141,42 @@ prop_model = loader.load_property_model()
 
 ---
 
+## Benchmarking
+
+```bash
+# Full benchmark (predictive + generative + optimization + ablation + system)
+python scripts/benchmark.py
+
+# Quick small-scale run
+python scripts/benchmark.py --quick
+
+# Run specific benchmarks
+python scripts/benchmark.py --predictive-only
+python scripts/benchmark.py --generative-only
+python scripts/benchmark.py --optimization-only
+python scripts/benchmark.py --ablation-only
+python scripts/benchmark.py --system-only
+
+# Multiple trials for statistical significance
+python scripts/benchmark.py --n-trials 5
+```
+
+Results saved to `artifacts/benchmark_scorecard.json` with mean ± std.
+
+### Ablation Studies
+```bash
+# Run optimization without RefinerAgent
+python -m cli.main --config configs/config_example.json --ablation no_refiner
+
+# VAE-only generation (no evolutionary)
+python -m cli.main --config configs/config_example.json --ablation no_generator
+
+# Single pass (one iteration only)
+python -m cli.main --config configs/config_example.json --ablation single_pass
+```
+
+---
+
 ## Data Sources
 
 | Dataset | Purpose | Raw | Processed |
@@ -149,6 +185,9 @@ prop_model = loader.load_property_model()
 | Tox21 (NR-AR) | Toxicity classification | 77,946 cpd × 12 assays | 7,265 compounds, 264-dim fingerprints |
 | ChEMBL | VAE pretraining | ~194M molecules<br>(100,931 @ 0.052 frac) | 100,931 tokenized sequences (max 100 chars) |
 | Lipophilicity | Property prediction (QED, SA, logP, MW) | 4,200 compounds | 4,200 compounds, 264-dim fingerprints |
+
+Preparers support `use_scaffold_split=True` to split by Murcko scaffold
+(no scaffold overlap between train/val/test) for realistic generalization estimates.
 
 Additional raw-only datasets (via `scripts/download_all_datasets.py`):
 

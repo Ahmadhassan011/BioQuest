@@ -14,7 +14,7 @@ from tdc.single_pred import ADME
 from infra.exceptions import DataError, DataProcessingError
 from ..storage import DataCache
 from ...models.featurization import MolecularFeaturizer
-from .base import BasePreparer
+from .base import BasePreparer, scaffold_split_indices
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +83,7 @@ class PropertyDatasetPreparer(BasePreparer):
         dataset_name: str = "Lipophilicity_AstraZeneca",
         val_split: float = 0.1,
         test_split: float = 0.1,
+        use_scaffold_split: bool = False,
     ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor], Dict, Dict]:
         """
         Prepare property prediction dataset with local caching.
@@ -91,6 +92,7 @@ class PropertyDatasetPreparer(BasePreparer):
             dataset_name: PyTDC dataset name (e.g., 'Lipophilicity_ID')
             val_split: Validation set fraction
             test_split: Test set fraction
+            use_scaffold_split: If True, split by Murcko scaffold.
 
         Returns:
             Tuple of (features, targets_dict, splits, metadata)
@@ -150,6 +152,7 @@ class PropertyDatasetPreparer(BasePreparer):
 
             all_features = []
             all_qed, all_sa, all_logp, all_mw = [], [], [], []
+            successful_smiles = []
 
             logger.info(
                 f"Featurizing and calculating properties for {len(smiles_list)} molecules..."
@@ -172,6 +175,7 @@ class PropertyDatasetPreparer(BasePreparer):
                 all_sa.append(1.0 - (np.log10(mol.GetNumAtoms() + 1) / 2.0))
                 all_logp.append(self._normalize_logp(logp))
                 all_mw.append(self._normalize_mw(mw))
+                successful_smiles.append(smiles)
 
             if not all_features:
                 raise ValueError(
@@ -188,17 +192,22 @@ class PropertyDatasetPreparer(BasePreparer):
             }
 
             n_samples = len(features_tensor)
-            indices = np.arange(n_samples)
-            np.random.shuffle(indices)
 
-            test_size = int(n_samples * test_split)
-            val_size = int(n_samples * val_split)
-
-            test_idx = indices[:test_size]
-            val_idx = indices[test_size : test_size + val_size]
-            train_idx = indices[test_size + val_size :]
-
-            splits = {"train": train_idx, "val": val_idx, "test": test_idx}
+            if use_scaffold_split:
+                splits = scaffold_split_indices(
+                    successful_smiles,
+                    val_frac=val_split,
+                    test_frac=test_split,
+                )
+            else:
+                indices = np.arange(n_samples)
+                np.random.shuffle(indices)
+                test_size = int(n_samples * test_split)
+                val_size = int(n_samples * val_split)
+                test_idx = indices[:test_size]
+                val_idx = indices[test_size : test_size + val_size]
+                train_idx = indices[test_size + val_size :]
+                splits = {"train": train_idx, "val": val_idx, "test": test_idx}
 
             metadata = {
                 "dataset_name": dataset_name,

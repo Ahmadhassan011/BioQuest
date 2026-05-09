@@ -10,7 +10,7 @@ from infra.exceptions import DataError, DataProcessingError
 from ..load.tdc import TDCDataLoader
 from ..storage import DataCache
 from ...models.featurization import MolecularFeaturizer
-from .base import BasePreparer
+from .base import BasePreparer, scaffold_split_indices
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +32,7 @@ class Tox21DatasetPreparer(BasePreparer):
         assay: str = "NR-AR",
         val_split: float = 0.1,
         test_split: float = 0.1,
+        use_scaffold_split: bool = False,
     ) -> Tuple[np.ndarray, np.ndarray, Dict, Dict]:
         """Prepare a specific Tox21 assay dataset with local caching."""
         if DataCache.has_processed_data(
@@ -73,16 +74,24 @@ class Tox21DatasetPreparer(BasePreparer):
             mol_features = self.featurizer.batch_featurize_molecules(smiles_list)
 
             n_samples = len(mol_features)
-            indices = np.arange(n_samples)
-            np.random.shuffle(indices)
-            test_size = int(n_samples * test_split)
-            val_size = int(n_samples * val_split)
-            test_idx, val_idx, train_idx = (
-                indices[:test_size],
-                indices[test_size : test_size + val_size],
-                indices[test_size + val_size :],
-            )
-            splits = {"train": train_idx, "val": val_idx, "test": test_idx}
+
+            if use_scaffold_split:
+                splits = scaffold_split_indices(
+                    smiles_list,
+                    val_frac=val_split,
+                    test_frac=test_split,
+                )
+            else:
+                indices = np.arange(n_samples)
+                np.random.shuffle(indices)
+                test_size = int(n_samples * test_split)
+                val_size = int(n_samples * val_split)
+                test_idx, val_idx, train_idx = (
+                    indices[:test_size],
+                    indices[test_size : test_size + val_size],
+                    indices[test_size + val_size :],
+                )
+                splits = {"train": train_idx, "val": val_idx, "test": test_idx}
 
             metadata = {
                 "dataset_name": "Tox21",

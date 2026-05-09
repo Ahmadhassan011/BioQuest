@@ -50,7 +50,7 @@ PyTDC → TDCDataLoader → DatasetPreparer → featurization → DataCache → 
 | ChEMBL (0.052) | 100,931 mols | 100,931 tokenized | MoleculeVAETrainer |
 | Lipophilicity | 4,200 mols | 4,200 fingerprints | PropertyPredictorTrainer |
 
-All datasets split 80/10/10 train/val/test.
+All datasets split 80/10/10 train/val/test (scaffold split available via `use_scaffold_split=True`).
 
 ---
 
@@ -98,6 +98,13 @@ All datasets split 80/10/10 train/val/test.
 - **property.py**: PropertyPredictor
 - **vae.py**: VAEGenerator
 - **predict.py**: MoleculePredictor (orchestrates all 4 inference models)
+
+### src/evaluation/
+- **metrics.py**: Regression (RMSE, MAE, R²) and classification (AUC, F1) metrics
+- **generation.py**: Molecule generation quality metrics (validity, uniqueness, novelty, diversity, KL divergence)
+- **admet.py**: ADMET property computation (HBA, HBD, TPSA, Lipinski Rule of Five) via RDKit
+- **reporter.py**: JSON evaluation reports with aggregate statistics (mean ± std)
+- **validator.py**: Input shape/sanity checks for models and predictions
 
 ### src/data/
 - **constants.py**: Amino acid constants, sequence utilities

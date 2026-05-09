@@ -251,6 +251,51 @@ logger = setup_logging("bioquest", level="INFO")
 logger = get_module_logger("training")
 ```
 
+## Ablation Studies
+
+The `--ablation` CLI flag disables specific agents to measure their contribution.
+
+| Mode | Description |
+|------|-------------|
+| `full` | All three agents (default) |
+| `no_refiner` | Skip RefinerAgent — no strategy switching or termination checks |
+| `no_generator` | Use seeds directly, skip molecule generation |
+| `single_pass` | One generation + evaluation pass, no iterative loop |
+
+```bash
+python -m cli.main --config configs/config_example.json --ablation no_refiner
+python -m cli.main --config configs/config_example.json --ablation single_pass
+```
+
+---
+
+## ADMET Properties
+
+In addition to the 4 trained model predictions (affinity, toxicity, QED, SA),
+every `predict_all_properties()` call now returns RDKit-computed ADMET properties:
+
+| Property | Description | Source |
+|----------|-------------|--------|
+| `hba` | Hydrogen bond acceptors | RDKit Lipinski |
+| `hbd` | Hydrogen bond donors | RDKit Lipinski |
+| `tpsa` | Topological polar surface area | RDKit Descriptors |
+| `num_rings` | Ring count | RDKit Descriptors |
+| `num_aromatic_rings` | Aromatic ring count | RDKit Descriptors |
+| `num_rotatable_bonds` | Rotatable bond count | RDKit Descriptors |
+| `num_heavy_atoms` | Heavy atom count | RDKit |
+| `fraction_csp3` | Fraction of sp3 carbons | RDKit Descriptors |
+| `passes_lipinski` | Lipinski Rule of Five | RDKit computation |
+
+```python
+from src.inference import MoleculePredictor
+
+predictor = MoleculePredictor("MKFLK...", models_dir="artifacts/models")
+props = predictor.predict_all_properties("CCO")
+print(props["passes_lipinski"])  # True / False
+```
+
+---
+
 ### Log Levels
 - `DEBUG`: Detailed diagnostic info
 - `INFO`: General events
@@ -275,6 +320,25 @@ export BIOQUEST_LOG_LEVEL=DEBUG
 
 ---
 
+## Benchmarking
+
+```bash
+# Full benchmark suite
+python scripts/benchmark.py
+
+# Per-category benchmarks
+python scripts/benchmark.py --predictive-only
+python scripts/benchmark.py --generative-only
+python scripts/benchmark.py --optimization-only
+python scripts/benchmark.py --ablation-only
+python scripts/benchmark.py --system-only
+
+# Multiple trials for statistical significance (mean ± std)
+python scripts/benchmark.py --n-trials 5
+```
+
+Output: `artifacts/benchmark_scorecard.json`
+
 ## Data Sources
 
 Datasets are downloaded via PyTDC to `data/raw/` and featurized to `data/processed/`.
@@ -295,6 +359,20 @@ All datasets use 80/10/10 train/val/test splits.
 | Tox21 NR-AR | 5,813 | 726 | 726 |
 | ChEMBL (0.052) | 80,745 | 10,093 | 10,093 |
 | Lipophilicity | 3,360 | 420 | 420 |
+
+### Scaffold Splitting
+Pass `use_scaffold_split=True` to any preparer to split by Murcko scaffold
+(no scaffold overlap between train/val/test). This gives more realistic
+generalization estimates than random splitting.
+
+```python
+from src.data.preparation.dti import DTIDatasetPreparer
+
+preparer = DTIDatasetPreparer()
+data_list, splits, meta = preparer.prepare_dti_dataset(
+    "DAVIS", use_scaffold_split=True,
+)
+```
 
 ### Supplementary Datasets (Raw Only)
 Downloaded via `scripts/download_all_datasets.py`; not used in model training directly.

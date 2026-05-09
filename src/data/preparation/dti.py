@@ -11,7 +11,7 @@ from ..load.handlers import ProteinDataHandler
 from ..load.tdc import TDCDataLoader
 from ..storage import DataCache
 from ...models.featurization import MolecularFeaturizer
-from .base import BasePreparer
+from .base import BasePreparer, scaffold_split_indices
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +53,7 @@ class DTIDatasetPreparer(BasePreparer):
         val_split: float = 0.1,
         test_split: float = 0.1,
         max_prot_len: int = 1024,
+        use_scaffold_split: bool = False,
     ) -> Tuple[List[Any], Dict, Dict]:
         """
         Prepare DTI dataset from PyTDC with local caching.
@@ -62,6 +63,7 @@ class DTIDatasetPreparer(BasePreparer):
             val_split: Validation set fraction
             test_split: Test set fraction
             max_prot_len: Maximum length for protein sequences to truncate to.
+            use_scaffold_split: If True, split by Murcko scaffold (no scaffold overlap).
 
         Returns:
             Tuple of (data_list, splits, metadata)
@@ -113,6 +115,7 @@ class DTIDatasetPreparer(BasePreparer):
                 f"Featurizing molecules and proteins (truncating proteins to {max_prot_len})..."
             )
             data_list = []
+            successful_smiles = []
             protein_handler = ProteinDataHandler(max_sequence_length=max_prot_len)
             for smiles, protein_seq, affinity in zip(
                 smiles_list, protein_seqs, affinities
@@ -139,19 +142,25 @@ class DTIDatasetPreparer(BasePreparer):
                 data.prot = torch.tensor(padded_prot_indices, dtype=torch.long)
                 data.y = torch.tensor([affinity], dtype=torch.float)
                 data_list.append(data)
+                successful_smiles.append(smiles)
 
             n_samples = len(data_list)
-            indices = np.arange(n_samples)
-            np.random.shuffle(indices)
 
-            test_size = int(n_samples * test_split)
-            val_size = int(n_samples * val_split)
-
-            test_idx = indices[:test_size]
-            val_idx = indices[test_size : test_size + val_size]
-            train_idx = indices[test_size + val_size :]
-
-            splits = {"train": train_idx, "val": val_idx, "test": test_idx}
+            if use_scaffold_split:
+                splits = scaffold_split_indices(
+                    successful_smiles,
+                    val_frac=val_split,
+                    test_frac=test_split,
+                )
+            else:
+                indices = np.arange(n_samples)
+                np.random.shuffle(indices)
+                test_size = int(n_samples * test_split)
+                val_size = int(n_samples * val_split)
+                test_idx = indices[:test_size]
+                val_idx = indices[test_size : test_size + val_size]
+                train_idx = indices[test_size + val_size :]
+                splits = {"train": train_idx, "val": val_idx, "test": test_idx}
 
             train_affinities = np.array([data_list[i].y.item() for i in train_idx])
 

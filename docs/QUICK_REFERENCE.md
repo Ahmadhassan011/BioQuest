@@ -185,6 +185,33 @@ tail -f training.log
 
 ---
 
+## Benchmarking
+
+```bash
+# Full suite
+python scripts/benchmark.py
+
+# Quick (1 trial)
+python scripts/benchmark.py --quick
+
+# Ablation modes
+python -m cli.main --config configs/config_example.json --ablation no_refiner
+python -m cli.main --config configs/config_example.json --ablation single_pass
+```
+
+---
+
+## ADMET Properties
+
+`predict_all_properties()` returns RDKit-computed ADMET:
+
+```python
+props = predictor.predict_all_properties("CCO")
+props["hba"], props["hbd"], props["tpsa"], props["passes_lipinski"]
+```
+
+---
+
 ## File Locations
 
 | Item | Path |
