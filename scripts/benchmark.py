@@ -304,7 +304,7 @@ def _system_benchmark(
             "MKFLK" * 50, use_gpu=use_gpu, models_dir=models_dir
         )
         test_smiles = (
-            ["CCO", "c1ccccc1", "CC(=O)O", "CCN", "CO", "CCCl", "CCCC"] * 150
+            ["CCO", "c1ccccc1", "CC(=O)O", "CCN", "CO", "CCCl", "CCCC"] * 20
         )
 
         # Warm-up: run an unseen batch to cold-start any lazy init / JIT compilation
@@ -389,10 +389,6 @@ def _generate_evaluation_reports(scorecard: Dict, output_dir: str = "artifacts/r
             for task, metrics in data.items():
                 if isinstance(metrics, dict):
                     reporter.generate_json_report(metrics, model_name, task)
-            reporter.generate_summary_report(
-                [{"metrics": m, "dataset": t} for t, m in data.items() if isinstance(m, dict)],
-                output_filename=f"{section}_summary.json",
-            )
         elif section == "generative":
             reporter.generate_json_report(data, model_name, section)
         else:
