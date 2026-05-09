@@ -1,9 +1,6 @@
-"""
-Model Utils Module: Utilities for model management, inference, and versioning.
+"""Model loading, inference, versioning, and registry management.
 
-This module provides:
-- Model loading and inference wrappers
-- Model versioning and registry management
+Features:
 - Device management and optimization
 - Model performance evaluation utilities
 - Inference caching for efficiency
@@ -42,7 +39,7 @@ class ModelLoader:
     - Inference caching
     """
 
-    def __init__(self, models_dir: str = "trained_models", use_gpu: bool = False):
+    def __init__(self, models_dir: str = "artifacts/models", use_gpu: bool = False):
         """
         Initialize model loader.
 
@@ -80,13 +77,9 @@ class ModelLoader:
             return self.loaded_models[model_name]
 
         if model_path is None:
-            model_path = self.models_dir / f"{model_name}.pt"
+            model_path = self.models_dir / "dti" / "best_model.pt"
 
         model_path = Path(model_path)
-
-        # Get atom feature dimension from a dummy molecule
-        dummy_graph = self.featurizer.featurize_molecule_graph("C")
-        atom_feature_dim = dummy_graph.x.shape[1]
 
         if not model_path.exists():
             logger.error(f"DTI model checkpoint not found at {model_path}")
@@ -104,9 +97,10 @@ class ModelLoader:
                 model = GNNDTIPredictor(**arch_config)
             else:
                 logger.warning(
-                    "No architecture config in checkpoint, using defaults. "
-                    "This may cause shape mismatches if training used different params."
+                    "No architecture config in checkpoint, inferring from dummy molecule."
                 )
+                dummy_graph = MolecularFeaturizer().featurize_molecule_graph("C")
+                atom_feature_dim = dummy_graph.x.shape[1]
                 model = GNNDTIPredictor(
                     atom_feature_dim=atom_feature_dim,
                     gcn_hidden_dim=128,
@@ -146,7 +140,7 @@ class ModelLoader:
             return self.loaded_models[model_name]
 
         if model_path is None:
-            model_path = self.models_dir / f"{model_name}.pt"
+            model_path = self.models_dir / "toxicity" / "best_model.pt"
 
         model_path = Path(model_path)
 
@@ -156,16 +150,17 @@ class ModelLoader:
                 f"Toxicity model checkpoint not found at {model_path}"
             )
         else:
-            model = ToxicityClassifier(
-                input_dim=264,
-                hidden_dims=[512, 256, 128, 64],
-                dropout=0.3,
-            )
-            model.to(self.device)
-
             checkpoint = torch.load(
                 model_path, map_location=self.device, weights_only=False
             )
+            arch_config = checkpoint.get("model_config", {})
+            model = ToxicityClassifier(
+                input_dim=arch_config.get("input_dim", 264),
+                hidden_dims=arch_config.get("hidden_dims", [512, 256, 128, 64]),
+                dropout=arch_config.get("dropout", 0.3),
+            )
+            model.to(self.device)
+
             state = checkpoint.get("model_state_dict", checkpoint)
             try:
                 model.load_state_dict(state)
@@ -194,7 +189,7 @@ class ModelLoader:
             return self.loaded_models[model_name]
 
         if model_path is None:
-            model_path = self.models_dir / f"{model_name}.pt"
+            model_path = self.models_dir / "properties" / "best_model.pt"
 
         model_path = Path(model_path)
 
@@ -204,16 +199,17 @@ class ModelLoader:
                 f"Property model checkpoint not found at {model_path}"
             )
         else:
-            model = PropertyPredictor(
-                input_dim=264,
-                shared_hidden_dim=256,
-                task_hidden_dim=128,
-            )
-            model.to(self.device)
-
             checkpoint = torch.load(
                 model_path, map_location=self.device, weights_only=False
             )
+            arch_config = checkpoint.get("model_config", {})
+            model = PropertyPredictor(
+                input_dim=arch_config.get("input_dim", 264),
+                shared_hidden_dim=arch_config.get("shared_hidden_dim", 256),
+                task_hidden_dim=arch_config.get("task_hidden_dim", 128),
+            )
+            model.to(self.device)
+
             state = checkpoint.get("model_state_dict", checkpoint)
             try:
                 model.load_state_dict(state)
@@ -249,7 +245,7 @@ class CustomModelPredictor:
     def __init__(
         self,
         protein_sequence: str,
-        models_dir: str = "trained_models",
+        models_dir: str = "artifacts/models",
         use_gpu: bool = False,
     ):
         """
@@ -269,9 +265,9 @@ class CustomModelPredictor:
         self.featurizer = MolecularFeaturizer()
 
         # Load models from subdirectories
-        dti_path = Path(models_dir) / "dti" / "dti.pt"
-        toxicity_path = Path(models_dir) / "toxicity" / "toxicity.pt"
-        property_path = Path(models_dir) / "properties" / "properties.pt"
+        dti_path = Path(models_dir) / "dti" / "best_model.pt"
+        toxicity_path = Path(models_dir) / "toxicity" / "best_model.pt"
+        property_path = Path(models_dir) / "properties" / "best_model.pt"
 
         self.dti_model = self.loader.load_dti_model(model_path=str(dti_path))
         self.toxicity_model = self.loader.load_toxicity_model(
@@ -519,13 +515,11 @@ class ModelEvaluator:
         all_targets = []
 
         with torch.no_grad():
-            for mol_graphs, prot_features, affinities in test_loader:
-                mol_graphs = {k: v.to(device) for k, v in mol_graphs.items()}
-                prot_features = prot_features.to(device)
-
-                predictions = model(mol_graphs, prot_features)
+            for batch in test_loader:
+                batch = batch.to(device)
+                predictions = model(batch, batch.prot)
                 all_preds.extend(predictions.cpu().numpy().flatten())
-                all_targets.extend(affinities.numpy())
+                all_targets.extend(batch.y.cpu().numpy().flatten())
 
         all_preds = np.array(all_preds)
         all_targets = np.array(all_targets)

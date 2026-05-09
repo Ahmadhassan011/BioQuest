@@ -1,4 +1,4 @@
-# Python
+# Byte-compiled / optimized / DLLs
 __pycache__/
 *.py[cod]
 *$py.class
@@ -24,27 +24,28 @@ share/python-wheels/
 MANIFEST
 
 # Virtual environments
+.venv/
 venv/
 ENV/
 env/
-.venv/
 venv.bak/
 env.bak/
 
-# IDE
+# IDE / Editor
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+.DS_Store
 .project
 .pydevproject
 .settings/
 *.sublime-project
 *.sublime-workspace
-.DS_Store
 
 # Testing
+.pytest_cache/
 .tox/
 .coverage
 .coverage.*
@@ -53,45 +54,41 @@ nosetests.xml
 coverage.xml
 *.cover
 .hypothesis/
-.pytest_cache/
 
-# Jupyter Notebook
-.ipynb_checkpoints/
+# notebooks
 notebooks/
+.ipynb_checkpoints/
 *.ipynb
 
 # Logs
 *.log
 logs/
-aamd.log
 
-# Training & Models
-training_results/
-trained_models/
-checkpoints/
-!trained_models/.gitkeep
-bioquest_results.json
+# Artifacts (all generated output)
+artifacts/
+!artifacts/models/.gitkeep
+!artifacts/checkpoints/.gitkeep
+!artifacts/reports/.gitkeep
+!artifacts/logs/.gitkeep
+!artifacts/figures/.gitkeep
 
-# Data
-data/raw/
-data/processed/
+# Data (raw/processed only, keep structure)
+# Ignore the data folder at the root
+/data/
 
-# Temporary files
-*.tmp
-*.temp
-*.bak
+# Do NOT ignore the data folder inside src
+!/src/data/
 
-# Project specific
-*.tab
-*.pkl
-*.smi
-
-# Config (keep only in configs/)
+# Config (keep only example)
 configs/*.json
 !configs/config_example.json
 
-# Ruff
-.ruff_cache
+# Temp files
+*.tmp
+*.temp
+*.bak
+*.tab
+*.smi
 
-# Python byte-compiled
-*.pyc
+# Misc
+.ruff_cache/

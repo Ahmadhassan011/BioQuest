@@ -52,7 +52,8 @@ class MoleculeVAE(nn.Module):
 
         # Decoder
         self.decoder_input = nn.Linear(latent_dim, hidden_dim)
-        self.decoder_gru = nn.GRU(latent_dim, hidden_dim, batch_first=True)
+        self.latent_to_emb = nn.Linear(latent_dim, embedding_dim)
+        self.decoder_gru = nn.GRU(embedding_dim, hidden_dim, batch_first=True)
         self.fc_out = nn.Linear(hidden_dim, vocab_size)
 
     def encode(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -97,23 +98,15 @@ class MoleculeVAE(nn.Module):
         Returns:
             Generated molecule as encoded tensor of token IDs, shape (batch_size, max_len)
         """
-        batch_size = z.size(0)
-        hidden = torch.tanh(self.decoder_input(z)).unsqueeze(0)
-
-        output_tokens = []
-        current_input = z.unsqueeze(1)
-
-        for _ in range(max_len):
-            gru_out, hidden = self.decoder_gru(current_input, hidden)
-            logits = self.fc_out(hidden.squeeze(0))
-            token = logits.argmax(dim=-1)
-            output_tokens.append(token.unsqueeze(1))
-
-        return torch.cat(output_tokens, dim=1)
+        logits = self.decode(z, max_len)
+        return logits.argmax(dim=-1)
 
     def decode(self, z: torch.Tensor, max_len: int = 100) -> torch.Tensor:
         """
-        Decode latent vector to sequence of logits (for training).
+        Decode latent vector to sequence of logits (autoregressive inference).
+
+        Feeds the previously predicted token (via argmax + embedding) as input
+        to each subsequent step, enabling proper autoregressive generation.
 
         Args:
             z: Latent vector of shape (batch_size, latent_dim)
@@ -126,12 +119,14 @@ class MoleculeVAE(nn.Module):
         hidden = torch.tanh(self.decoder_input(z)).unsqueeze(0)
 
         all_logits = []
-        current_input = z.unsqueeze(1)
+        current_input = self.latent_to_emb(z).unsqueeze(1)
 
         for _ in range(max_len):
             gru_out, hidden = self.decoder_gru(current_input, hidden)
-            logits = self.fc_out(hidden.squeeze(0))
+            logits = self.fc_out(gru_out.squeeze(1))
             all_logits.append(logits.unsqueeze(1))
+            pred_tokens = logits.argmax(dim=-1)
+            current_input = self.embedding(pred_tokens).unsqueeze(1)
 
         return torch.cat(all_logits, dim=1)
 
@@ -139,7 +134,11 @@ class MoleculeVAE(nn.Module):
         self, x: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
-        Forward pass through VAE.
+        Forward pass through VAE with teacher forcing.
+
+        At each decoding step the ground-truth token (from x) is fed as
+        the next input instead of the model's own prediction.  This provides
+        stronger gradient signal during training.
 
         Args:
             x: Input SMILES tensor (used as target for reconstruction during training)
@@ -149,5 +148,18 @@ class MoleculeVAE(nn.Module):
         """
         mu, logvar = self.encode(x)
         z = self.reparameterize(mu, logvar)
-        reconstructed_logits = self.decode(z, max_len=x.size(1))
+
+        batch_size, max_len = x.size()
+        hidden = torch.tanh(self.decoder_input(z)).unsqueeze(0)
+
+        all_logits = []
+        current_input = self.latent_to_emb(z).unsqueeze(1)
+
+        for t in range(max_len):
+            gru_out, hidden = self.decoder_gru(current_input, hidden)
+            logits = self.fc_out(gru_out.squeeze(1))
+            all_logits.append(logits.unsqueeze(1))
+            current_input = self.embedding(x[:, t]).unsqueeze(1)
+
+        reconstructed_logits = torch.cat(all_logits, dim=1)
         return reconstructed_logits, mu, logvar

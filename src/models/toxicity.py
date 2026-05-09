@@ -1,9 +1,4 @@
-"""
-Toxicity Classifier Module.
-
-Deep neural network for predicting molecular toxicity using
-feature-level attention and residual connections.
-"""
+"""Deep neural network for molecular toxicity prediction."""
 
 import logging
 from typing import List
@@ -13,7 +8,7 @@ import torch.nn.functional as F
 
 logger = logging.getLogger(__name__)
 
-# Default input dimension: Morgan fingerprints (2048 bits) + molecular descriptors (16 features)
+# Default input dimension: Morgan fingerprints (256 bits) + 8 RDKit descriptors
 DEFAULT_TOXICITY_INPUT_DIM = 264
 
 
@@ -56,6 +51,7 @@ class ToxicityClassifier(nn.Module):
             hidden_dims = [512, 256, 128, 64]
 
         self.input_dim = input_dim
+        self.hidden_dims = hidden_dims
         self.dropout_rate = dropout
         self.use_attention = use_attention
 
@@ -128,5 +124,3 @@ class ToxicityClassifier(nn.Module):
         if return_logits:
             return logits
         return torch.sigmoid(logits)
-
-        return output

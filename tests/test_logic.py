@@ -120,7 +120,7 @@ class TestDataStructures:
 
     def test_dataset_result_dataclass(self):
         """Test DatasetResult dataclass creation."""
-        from src.data.preparers import DatasetResult
+        from src.data.preparation import DatasetResult
 
         result = DatasetResult(
             data=[1, 2, 3],

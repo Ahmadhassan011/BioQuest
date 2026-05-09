@@ -17,7 +17,7 @@ This loop repeats until convergence, outputting a Pareto front of optimized drug
 | Feature | Description |
 |---------|-------------|
 | **Multi-Agent System** | Generator, Evaluator, Refiner agents working in loop |
-| **Neural Networks** | GNN-DTI (binding affinity), Toxicity classifier, Property predictor |
+| **Neural Networks** | GNN-DTI (binding affinity), Toxicity classifier, Property predictor, VAE |
 | **Hybrid Generation** | RDKit evolutionary algorithms + VAE for novel molecules |
 | **Pareto Optimization** | Multi-objective optimization with weighted sum |
 | **Multiple Interfaces** | CLI, Streamlit web UI, Python API |
@@ -35,10 +35,10 @@ source .venv/bin/activate
 pip install -e .
 
 # Run with config
-python src/app/main.py --config configs/config_example.json
+python -m cli.main --config configs/config_example.json
 
 # Or use web UI
-streamlit run src/app/ui.py
+streamlit run ui/streamlit_app.py
 ```
 
 ---
@@ -49,12 +49,17 @@ streamlit run src/app/ui.py
 # Train all models (50 epochs, GPU)
 python scripts/train_models.py --all --epochs 50 --use-gpu
 
-# Train specific model
-python scripts/train_models.py --model gnn_dti --epochs 100
-python scripts/train_models.py --model toxicity --epochs 50
-python scripts/train_models.py --model property --epochs 80
-python scripts/train_models.py --model vae --epochs 50
+# Train specific models
+python scripts/train_models.py --models dti --epochs 100
+python scripts/train_models.py --models toxicity --epochs 50
+python scripts/train_models.py --models property --epochs 80
+python scripts/train_models.py --models vae --epochs 50
+
+# Custom checkpoint directory (default: artifacts/models/)
+python scripts/train_models.py --all --checkpoint-dir ./checkpoints
 ```
+
+Trained model checkpoints are saved to `artifacts/models/{dti,toxicity,vae,properties}/best_model.pt`.
 
 ---
 
@@ -92,25 +97,46 @@ Objectives weights must sum to 1.0.
 
 ## Python API
 
-```python
-from src.app.core import AgentOrchestrator
-from src.utils.config import Config
+### Run Optimization
 
-config = Config.from_file('configs/config_example.json')
-orchestrator = AgentOrchestrator(config)
-results = orchestrator.run()
+```python
+from src.inference import MoleculePredictor
+from src.core.optimization import OptimizationEvaluator
+from src.core.agents import GeneratorAgent, EvaluatorAgent, RefinerAgent, AgentOrchestrator
+
+predictor = MoleculePredictor(protein_sequence="MKFLK...", models_dir="artifacts/models")
+vae_gen = predictor.get_vae_generator()
+
+opt = OptimizationEvaluator(
+    objective_weights={"affinity": 0.4, "toxicity": 0.3, "qed": 0.2, "sa": 0.1}
+)
+
+orchestrator = AgentOrchestrator(
+    GeneratorAgent(vae_gen),
+    EvaluatorAgent(predictor, opt),
+    RefinerAgent(opt),
+)
 ```
 
-### Load Models
+### Predict Properties
 
 ```python
-from src.models.gnn_dti import GNNDTIPredictor
-from src.models.toxicity import ToxicityClassifier
-from src.models.property import PropertyPredictor
+from src.inference import MoleculePredictor
 
-dti = GNNDTIPredictor.load('trained_models/dti.pt')
-tox = ToxicityClassifier.load('trained_models/toxicity.pt')
-prop = PropertyPredictor.load('trained_models/property.pt')
+predictor = MoleculePredictor(protein_sequence="MKFLK...", models_dir="artifacts/models")
+props = predictor.predict_all_properties("CCO")
+# Returns: {"affinity": 0.87, "toxicity": 0.12, "qed": 0.78, "sa": 0.65, "logp": 0.24, "mw": 46.07}
+```
+
+### Load Trained Models
+
+```python
+from src.models.loader import ModelLoader
+
+loader = ModelLoader(models_dir="artifacts/models", use_gpu=False)
+dti_model = loader.load_dti_model()
+tox_model = loader.load_toxicity_model()
+prop_model = loader.load_property_model()
 ```
 
 ---
@@ -119,7 +145,7 @@ prop = PropertyPredictor.load('trained_models/property.pt')
 
 | Dataset | Purpose | Size |
 |---------|---------|------|
-| DAVIS | DTI prediction | 30,056 interactions |
+| DAVIS | DTI prediction | 7,429 interactions (after filtering) |
 | Tox21 | Toxicity classification | 7,831 compounds |
 | ChEMBL | VAE pretraining | Millions of molecules |
 
@@ -129,7 +155,6 @@ prop = PropertyPredictor.load('trained_models/property.pt')
 
 | File | Description |
 |------|-------------|
-| [docs/README.md](docs/README.md) | Overview and quick start |
 | [docs/QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md) | CLI commands, code patterns |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design with diagrams |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Training, config, caching, logging |

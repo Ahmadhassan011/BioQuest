@@ -1,9 +1,4 @@
-"""
-Attention Mechanisms Module.
-
-Provides multi-head self-attention for sequence processing
-and feature importance weighting.
-"""
+"""Multi-head self-attention for sequence processing and feature weighting."""
 
 import logging
 import numpy as np

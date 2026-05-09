@@ -1,12 +1,4 @@
-"""
-Core trainer base class with shared training infrastructure.
-
-Provides:
-- Optimizer and learning rate scheduler management
-- Early stopping with patience
-- Gradient clipping
-- Checkpoint save/load
-- Training history tracking
+"""Shared training infrastructure: optimizers, early stopping, checkpointing.
 
 Subclass contract:
 - train_epoch(loader, epoch=None) -> metrics dict or float
@@ -104,7 +96,7 @@ class Trainer:
             metadata: Additional metadata to save, including 'epoch'
             model_config: Architecture configuration for loading
         """
-        from src.models.registry import create_model_checkpoint
+        from ..models.registry import create_model_checkpoint
 
         metadata = metadata or {}
         epoch = metadata.pop("epoch", -1)
@@ -123,7 +115,7 @@ class Trainer:
 
     def _load_checkpoint(self, checkpoint_path: Path):
         """Load model checkpoint."""
-        from src.models.registry import load_model_checkpoint
+        from ..models.registry import load_model_checkpoint
 
         load_model_checkpoint(self.model, str(checkpoint_path), self.device)
         logger.info(f"Checkpoint loaded from {checkpoint_path}")

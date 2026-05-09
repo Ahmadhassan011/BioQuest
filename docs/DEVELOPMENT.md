@@ -12,67 +12,121 @@ Training, configuration, caching, and logging for BioQuest.
 python scripts/train_models.py --all --epochs 50 --use-gpu
 
 # Train specific model
-python scripts/train_models.py --model gnn_dti --epochs 100
-python scripts/train_models.py --model toxicity --epochs 50
-python scripts/train_models.py --model property --epochs 80
-python scripts/train_models.py --model vae --epochs 50
+python scripts/train_models.py --models dti --epochs 100
+python scripts/train_models.py --models toxicity --epochs 50
+python scripts/train_models.py --models property --epochs 80
+python scripts/train_models.py --models vae --epochs 50
 ```
 
 ### Programmatic Training
 
 #### GNN-DTI
 ```python
-from src.training.gnn_dti_trainer import GNNDTITrainer
-from src.data.preparers import DTIDatasetPreparer
+import torch
+from src.models.gnn_dti import GNNDTIPredictor
+from src.training.gnn_dti import GNNDTITrainer
+from src.data.preparation.dti import DTIDatasetPreparer, DTIGraphDataset
+from src.training.utils import create_data_loaders
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 preparer = DTIDatasetPreparer()
-data = preparer.prepare_dti_dataset("DAVIS")
-
-trainer = GNNDTITrainer(config)
-trainer.train(
-    X_mol=data['X_mol'],
-    X_prot=data['X_prot'],
-    y=data['y'],
-    splits=data['splits'],
-    epochs=50,
-    batch_size=32
+data_list, splits, metadata = preparer.prepare_dti_dataset("DAVIS")
+dataset = DTIGraphDataset(data_list)
+train_loader, val_loader, _ = create_data_loaders(
+    dataset, splits, batch_size=32, dataset_type="dti"
 )
-trainer.save_checkpoint('trained_models/dti.pt')
+
+model = GNNDTIPredictor(atom_feature_dim=metadata["atom_feature_dim"])
+trainer = GNNDTITrainer(model, device)
+results = trainer.fit(
+    train_loader, val_loader,
+    epochs=50,
+    checkpoint_dir="artifacts/models/dti",
+)
 ```
 
 #### Toxicity
 ```python
-from src.training.toxicity_classifier_trainer import ToxicityClassifierTrainer
-from src.data.loaders import TDCDataLoader
+import torch
+from torch.utils.data import TensorDataset
+from src.models.toxicity import ToxicityClassifier
+from src.training.toxicity import ToxicityClassifierTrainer
+from src.data.preparation.toxicity import Tox21DatasetPreparer
+from src.training.utils import create_data_loaders
 
-loader = TDCDataLoader()
-X, y = loader.load_tox21_data()
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-trainer = ToxicityClassifierTrainer(config)
-trainer.train(X, y, epochs=50, batch_size=32)
-trainer.save_checkpoint('trained_models/toxicity.pt')
+preparer = Tox21DatasetPreparer()
+X, y, splits, metadata = preparer.prepare_tox21_dataset(assay="NR-AR")
+dataset = TensorDataset(torch.from_numpy(X).float(), torch.from_numpy(y).float())
+train_loader, val_loader, _ = create_data_loaders(
+    dataset, splits, batch_size=32, dataset_type="toxicity"
+)
+
+model = ToxicityClassifier(input_dim=metadata["mol_feature_dim"])
+trainer = ToxicityClassifierTrainer(model, device)
+results = trainer.fit(
+    train_loader, val_loader,
+    epochs=50,
+    checkpoint_dir="artifacts/models/toxicity",
+)
 ```
 
 #### Property
 ```python
-from src.training.property_predictor_trainer import PropertyPredictorTrainer
+import torch
+from src.models.property import PropertyPredictor
+from src.training.property import PropertyPredictorTrainer
+from src.data.preparation.property import PropertyDatasetPreparer, PropertyPredictionDataset
+from src.training.utils import create_data_loaders
 
-trainer = PropertyPredictorTrainer(config)
-trainer.train(X_train, properties_train, X_val, properties_val, epochs=80)
-trainer.save_checkpoint('trained_models/property.pt')
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+preparer = PropertyDatasetPreparer()
+features, targets_dict, splits, metadata = preparer.prepare_property_dataset("Lipophilicity_AstraZeneca")
+dataset = PropertyPredictionDataset(features, targets_dict)
+train_loader, val_loader, _ = create_data_loaders(
+    dataset, splits, batch_size=32, dataset_type="property"
+)
+
+model = PropertyPredictor(input_dim=metadata["mol_feature_dim"])
+trainer = PropertyPredictorTrainer(model, device)
+results = trainer.fit(
+    train_loader, val_loader,
+    epochs=80,
+    checkpoint_dir="artifacts/models/properties",
+)
 ```
 
 #### VAE
 ```python
-from src.training.molecule_vae_trainer import MoleculeVAETrainer
-from src.data.preparers import VAEDatasetPreparer
+import torch
+from torch.utils.data import TensorDataset
+from src.models.vae import MoleculeVAE
+from src.training.vae import MoleculeVAETrainer
+from src.data.preparation.vae import VAEDatasetPreparer
+from src.training.utils import create_data_loaders
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 preparer = VAEDatasetPreparer()
-data = preparer.prepare_vae_dataset(sample_frac=0.05)
+X, splits, metadata = preparer.prepare_vae_dataset(sample_frac=0.1)
+dataset = TensorDataset(torch.from_numpy(X).long())
+train_loader, val_loader, _ = create_data_loaders(
+    dataset, splits, batch_size=64, dataset_type="vae"
+)
 
-trainer = MoleculeVAETrainer(config)
-trainer.train(data['train'], data['val'], epochs=50)
-trainer.save_checkpoint('trained_models/vae.pt')
+model = MoleculeVAE(
+    vocab_size=len(preparer.smiles_chars),
+    latent_dim=64,
+)
+trainer = MoleculeVAETrainer(model, device, kl_anneal_epochs=50)
+results = trainer.fit(
+    train_loader, val_loader,
+    epochs=100,
+    checkpoint_dir="artifacts/models/vae",
+)
 ```
 
 ### Training Parameters
@@ -141,7 +195,7 @@ Objectives weights must sum to 1.0.
   },
   "predictor": {
     "use_gpu": false,
-    "models_dir": "trained_models"
+    "models_dir": "artifacts/models"
   }
 }
 ```
@@ -157,8 +211,8 @@ export BIOQUEST_LOG_LEVEL=DEBUG
 
 ### Overview
 Data is cached in `data/` after first download:
-- `data/raw/` - Raw datasets (DAVIS, Tox21, ChEMBL)
-- `data/processed/` - Featurized data
+- `data/raw/` - Raw datasets (DAVIS, Tox21, ChEMBL) as pickle files
+- `data/processed/` - Featurized data as torch tensors + JSON splits
 
 ### Cache Management
 ```python
@@ -179,7 +233,7 @@ DataCache.clear_cache()
 ```
 
 ### Cache Behavior
-- First run: Downloads from PyTDC, saves to cache
+- First run: Downloads from PyTDC, featurizes, saves to cache
 - Subsequent runs: Loads from cache (< 1 second)
 
 ---
@@ -224,7 +278,7 @@ export BIOQUEST_LOG_LEVEL=DEBUG
 ## Data Sources
 
 ### DAVIS (DTI)
-- 4,485 proteins, 68 drugs, 30,056 interactions
+- 4,485 proteins, 68 drugs, 30,056 interactions (7,429 after censored filter)
 
 ### Tox21 (Toxicity)
 - 7,831 compounds, 12 assays
@@ -238,16 +292,16 @@ export BIOQUEST_LOG_LEVEL=DEBUG
 
 ### Out of Memory
 ```bash
-python scripts/train_models.py --model gnn_dti --batch-size 16
+python scripts/train_models.py --models dti --batch-size 16
 ```
 
 ### Loss Not Decreasing
 ```bash
-python scripts/train_models.py --model gnn_dti --learning-rate 0.0005
+python scripts/train_models.py --models dti --learning-rate 0.0005
 ```
 
 ### CUDA Errors
 ```bash
 python -c "import torch; print(torch.cuda.is_available())"
-python scripts/train_models.py --model gnn_dti  # CPU fallback
+python scripts/train_models.py --models dti  # CPU fallback
 ```

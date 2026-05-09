@@ -1,13 +1,10 @@
 """
-Configuration management for BioQuest.
+Load, save, and access configuration values with dot notation.
 
-Features:
-- Load/save JSON configurations
-- Nested key access with dot notation
-- Configuration validation against schema
-- Environment variable substitution
-- Default value fallback
-- Type hints and comprehensive docstrings
+Configuration validation against schema
+Environment variable substitution
+Default value fallback
+Type hints and comprehensive docstrings
 """
 
 import json
@@ -117,7 +114,7 @@ class Config:
             },
             "predictor": {
                 "use_gpu": False,
-                "models_dir": "trained_models",
+                "models_dir": "artifacts/models",
                 "batch_predict": True,
             },
             "generation": {

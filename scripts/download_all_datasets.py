@@ -13,8 +13,8 @@ from pathlib import Path
 # Add the src directory to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.data.loaders import TDCDataLoader
-from src.data.preparers import PropertyDatasetPreparer
+from src.data.load.tdc import TDCDataLoader
+from src.data.preparation.property import PropertyDatasetPreparer
 
 
 def download_datasets(skip_existing: bool = True):

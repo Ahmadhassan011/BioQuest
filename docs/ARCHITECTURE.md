@@ -8,7 +8,7 @@ System design and component overview for BioQuest.
 
 BioQuest combines:
 - **Multi-agent orchestration** for drug discovery workflow
-- **Neural networks** for property prediction (GNN-DTI, Toxicity, Property)
+- **Neural networks** for property prediction (GNN-DTI, Toxicity, Property, VAE)
 - **Hybrid generation** (evolutionary + VAE) for novel molecules
 - **Pareto optimization** for multi-objective selection
 
@@ -36,7 +36,7 @@ The orchestrator runs an iterative loop:
 ## Data Flow
 
 ```
-PyTDC → loaders → featurization → preparers → training → trained_models/
+PyTDC → TDCDataLoader → DatasetPreparer → featurization → DataCache → training → artifacts/models/
 ```
 
 <img src="./diagrams/data-flow.png" width="700" />
@@ -45,30 +45,59 @@ PyTDC → loaders → featurization → preparers → training → trained_model
 
 ## Key Components
 
-### src/app/core.py
-- **AgentOrchestrator**: Main workflow coordinator
-- **GeneratorAgent**: Creates molecules (evolutionary + VAE)
-- **EvaluatorAgent**: Scores molecules on objectives
-- **RefinerAgent**: Optimizes and ranks candidates
+### src/core/agents/
+- **orchestrator.py**: AgentOrchestrator — main workflow coordinator
+- **generator.py**: GeneratorAgent — creates molecules via VAE generator
+- **evaluator.py**: EvaluatorAgent — scores molecules via MoleculePredictor + OptimizationEvaluator
+- **refiner.py**: RefinerAgent — analyzes convergence, adjusts strategy
+- **messages.py**: AgentMessage, AgentState dataclasses for inter-agent communication
 
-### src/pipelines/
-- **generation.py**: HybridMoleculeGenerator
-- **prediction.py**: MoleculePredictor wraps all models
-- **optimization.py**: Pareto front selection, weighted sum
+### src/core/optimization/
+- **__init__.py**: OptimizationEvaluator, MoleculeScore — combines objectives + convergence
+- **objectives.py**: MultiObjectiveEvaluator — weighted-sum scoring
+- **pareto.py**: Pareto front selection (higher-is-better)
+- **convergence.py**: ConvergenceTracker — plateau detection, patience tracking
+
+### src/core/types/
+- **config.py**: OptimizationConfig, ModelConfig dataclasses
+- **smiles.py**: SMILES validation/canonicalization
+- **protein.py**: Amino acid constants, sequence validation
 
 ### src/models/
-- **gnn_dti.py**: GNNDTIPredictor (1.2M params)
-- **toxicity.py**: ToxicityClassifier (540K params)
-- **property.py**: PropertyPredictor (380K params)
-- **vae.py**: MoleculeVAE (300K params)
-- **featurization.py**: Morgan fingerprints, RDKit descriptors
+- **gnn_dti.py**: GNNDTIPredictor (860K params) — GCN + attention-LSTM
+- **toxicity.py**: ToxicityClassifier (540K params) — residual MLP + feature attention
+- **property.py**: PropertyPredictor (380K params) — multi-task shared encoder
+- **vae.py**: MoleculeVAE (600K params) — GRU encoder/decoder with reparameterization
+- **featurization.py**: Morgan fingerprints, RDKit descriptors, graph featurization
+- **attention.py**: MultiHeadAttention module
+- **registry.py**: ModelRegistry, checkpoint save/load
+- **loader.py**: ModelLoader, CustomModelPredictor, ModelEvaluator
 
 ### src/training/
-- **base.py**: Base Trainer class
-- **gnn_dti_trainer.py**: GNNDTITrainer
-- **toxicity_classifier_trainer.py**: ToxicityClassifierTrainer
-- **property_predictor_trainer.py**: PropertyPredictorTrainer
-- **molecule_vae_trainer.py**: MoleculeVAETrainer
+- **base.py**: Base Trainer (optimizer, scheduler, early stopping)
+- **gnn_dti.py**: GNNDTITrainer (mixed precision, gradient accumulation)
+- **toxicity.py**: ToxicityClassifierTrainer (weighted BCE, AUC monitoring)
+- **property.py**: PropertyPredictorTrainer (multi-task losses)
+- **vae.py**: MoleculeVAETrainer (KL annealing, reconstruction accuracy)
+- **utils.py**: create_data_loaders, convert_numpy_types, save_training_config
+
+### src/inference/
+- **dti.py**: DTIPredictor
+- **toxicity.py**: ToxicityPredictor
+- **property.py**: PropertyPredictor
+- **vae.py**: VAEGenerator
+- **predict.py**: MoleculePredictor (orchestrates all 4 inference models)
+
+### src/data/
+- **constants.py**: Amino acid constants, sequence utilities
+- **storage.py**: DataCache (raw + processed with versioning)
+- **load/tdc.py**: TDCDataLoader (PyTDC download with local caching)
+- **load/handlers.py**: Protein/Drug/Graph data handlers
+- **load/dataset.py**: BioQuestDataset, ObjectiveHandler
+- **preparation/dti.py**: DTIDatasetPreparer
+- **preparation/toxicity.py**: Tox21DatasetPreparer
+- **preparation/property.py**: PropertyDatasetPreparer
+- **preparation/vae.py**: VAEDatasetPreparer
 
 ---
 
@@ -106,7 +135,7 @@ Objectives weights must sum to 1.0.
 
 | Model | Parameters | Training (GPU) | Inference |
 |-------|------------|----------------|-----------|
-| GNN-DTI | 1.2M | 30-60 min | 100ms |
+| GNN-DTI | 860K | 30-60 min | 100ms |
 | Toxicity | 540K | 15-30 min | 50ms |
 | Property | 380K | 20-40 min | 30ms |
-| VAE | - | 30-60 min | - |
+| VAE | 600K | 30-60 min | 50ms |

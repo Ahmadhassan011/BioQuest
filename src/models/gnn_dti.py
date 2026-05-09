@@ -113,9 +113,14 @@ class GNNDTIPredictor(nn.Module):
         Returns:
             Binding affinity prediction.
         """
-        x, edge_index, batch = data.x, data.edge_index, data.batch
+        x, edge_index = data.x, data.edge_index
 
-        batch_size = data.num_graphs
+        if data.batch is None:
+            batch = torch.zeros(x.size(0), dtype=torch.long, device=x.device)
+            batch_size = 1
+        else:
+            batch = data.batch
+            batch_size = batch.max().item() + 1
         if protein_indices.dim() == 2:
             if protein_indices.shape[0] != batch_size:
                 raise ValueError(
@@ -144,7 +149,12 @@ class GNNDTIPredictor(nn.Module):
         protein_hidden = protein_hidden + self.dropout(protein_attention_out)
 
         lstm_out, _ = self.protein_lstm(protein_hidden)
-        protein_representation = self.protein_projection(lstm_out[:, -1, :])
+
+        seq_len = (protein_indices != 0).sum(dim=1).clamp(min=1) - 1
+        batch_indices = torch.arange(batch_size, device=protein_indices.device)
+        protein_representation = self.protein_projection(
+            lstm_out[batch_indices, seq_len, :]
+        )
 
         # Combine representations
         interaction_input = torch.cat([mol_embedding, protein_representation], dim=1)

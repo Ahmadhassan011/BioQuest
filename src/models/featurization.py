@@ -1,9 +1,4 @@
-"""
-Molecular Featurization Module.
-
-Provides sophisticated featurization using Morgan fingerprints
-and RDKit descriptors.
-"""
+"""Molecular featurization using Morgan fingerprints and RDKit descriptors."""
 
 import logging
 from typing import List
@@ -154,15 +149,7 @@ class MolecularFeaturizer:
         Returns:
             Numpy array of shape (max_len,) with dtype int64 containing indices
         """
-        from src.data.constants import AA_TO_IDX
+        from ..data.constants import sequence_to_indices
 
-        seq = sequence.upper() if sequence is not None else ""
-        indices = [AA_TO_IDX.get(ch, 0) for ch in seq]
-
-        # Truncate or pad
-        if len(indices) >= max_len:
-            indices = indices[:max_len]
-        else:
-            indices = indices + [0] * (max_len - len(indices))
-
+        indices = sequence_to_indices(sequence, max_len)
         return np.array(indices, dtype=np.int64)

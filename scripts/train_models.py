@@ -30,14 +30,14 @@ from src.training import (
     PropertyPredictorTrainer,
     MoleculeVAETrainer,
 )
-from src.data.preparers import (
+from src.data.preparation import (
     DTIDatasetPreparer,
     Tox21DatasetPreparer,
     VAEDatasetPreparer,
-    DTIGraphDataset,
-    PropertyDatasetPreparer,  # New import
-    PropertyPredictionDataset,  # New import
+    PropertyDatasetPreparer,
 )
+from src.data.preparation.dti import DTIGraphDataset
+from src.data.preparation.property import PropertyPredictionDataset
 from src.training.utils import (
     create_data_loaders,
     save_training_config,
@@ -60,7 +60,7 @@ def train_dti_model(
     batch_size: int = 32,
     epochs: int = 50,
     learning_rate: float = 1e-3,
-    checkpoint_dir: str = "checkpoints/dti",
+    checkpoint_dir: str = "artifacts/models/dti",
     use_gpu: bool = False,
     dataset: str = "DAVIS",
     gradient_accumulation_steps: int = 1,
@@ -116,7 +116,7 @@ def train_toxicity_model(
     batch_size: int = 32,
     epochs: int = 50,
     learning_rate: float = 1e-3,
-    checkpoint_dir: str = "checkpoints/toxicity",
+    checkpoint_dir: str = "artifacts/models/toxicity",
     use_gpu: bool = False,
     assay: str = "NR-AR",
 ) -> Dict:
@@ -164,7 +164,7 @@ def train_vae_model(
     batch_size: int = 64,
     epochs: int = 100,
     learning_rate: float = 1e-3,
-    checkpoint_dir: str = "checkpoints/vae",
+    checkpoint_dir: str = "artifacts/models/vae",
     use_gpu: bool = False,
     kl_anneal_epochs: int = 50,
     chembl_frac: float = 0.1,
@@ -217,9 +217,9 @@ def train_property_model(
     batch_size: int = 32,
     epochs: int = 50,
     learning_rate: float = 1e-3,
-    checkpoint_dir: str = "checkpoints/properties",
+    checkpoint_dir: str = "artifacts/models/properties",
     use_gpu: bool = False,
-    dataset: str = "Lipophilicity_ID",  # Default dataset for property prediction
+    dataset: str = "Lipophilicity_AstraZeneca",
 ) -> Dict:
     """
     Train multi-task property prediction model.
@@ -284,7 +284,7 @@ def main():
     parser.add_argument("--use-gpu", action="store_true", help="Use GPU if available")
     parser.add_argument(
         "--checkpoint-dir",
-        default="checkpoints",
+        default="artifacts/models",
         help="Base directory for saving checkpoints",
     )
     parser.add_argument(
@@ -299,7 +299,7 @@ def main():
     )
     parser.add_argument(
         "--prop-dataset",
-        default="lipophilicity_astrazeneca",
+        default=        "Lipophilicity_AstraZeneca",
         help="PyTDC dataset for property training",
     )  # New argument
     parser.add_argument(

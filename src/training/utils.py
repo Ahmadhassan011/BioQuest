@@ -1,6 +1,4 @@
-"""
-Training Utilities Module: Helper functions for the training pipeline.
-"""
+"""Helper functions for the training pipeline."""
 
 import logging
 import json
@@ -54,23 +52,7 @@ def create_data_loaders(
         train_loader = PyGDataLoader(train_dataset, batch_size=batch_size, shuffle=True)
         val_loader = PyGDataLoader(val_dataset, batch_size=batch_size, shuffle=False)
         test_loader = PyGDataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-    elif dataset_type == "vae":
-        train_loader = TorchDataLoader(
-            train_dataset, batch_size=batch_size, shuffle=True, drop_last=True
-        )
-        val_loader = TorchDataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-        test_loader = TorchDataLoader(
-            test_dataset, batch_size=batch_size, shuffle=False
-        )
-    elif dataset_type == "property":
-        train_loader = TorchDataLoader(
-            train_dataset, batch_size=batch_size, shuffle=True, drop_last=True
-        )
-        val_loader = TorchDataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-        test_loader = TorchDataLoader(
-            test_dataset, batch_size=batch_size, shuffle=False
-        )
-    elif dataset_type == "toxicity":
+    elif dataset_type in ("vae", "property", "toxicity"):
         train_loader = TorchDataLoader(
             train_dataset, batch_size=batch_size, shuffle=True, drop_last=True
         )

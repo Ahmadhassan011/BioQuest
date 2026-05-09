@@ -8,23 +8,36 @@ Essential commands and patterns for BioQuest.
 
 ### CLI
 ```bash
-python src/app/main.py --config configs/config_example.json
-python src/app/main.py --help
+python -m cli.main --config configs/config_example.json
+python -m cli.main --help
 ```
 
 ### Web UI
 ```bash
-streamlit run src/app/ui.py
+streamlit run ui/streamlit_app.py
 ```
 
 ### Python API
 ```python
-from src.app.core import AgentOrchestrator
-from src.utils.config import Config
+from src.inference import MoleculePredictor
+from src.core.optimization import OptimizationEvaluator
+from src.core.agents import GeneratorAgent, EvaluatorAgent, RefinerAgent, AgentOrchestrator
 
-config = Config.from_file('configs/config_example.json')
-orchestrator = AgentOrchestrator(config)
-results = orchestrator.run()
+predictor = MoleculePredictor(
+    protein_sequence="MKFLK...",
+    models_dir="artifacts/models",
+)
+vae_gen = predictor.get_vae_generator()
+
+opt = OptimizationEvaluator(
+    objective_weights={"affinity": 0.4, "toxicity": 0.3, "qed": 0.2, "sa": 0.1}
+)
+
+orchestrator = AgentOrchestrator(
+    GeneratorAgent(vae_gen),
+    EvaluatorAgent(predictor, opt),
+    RefinerAgent(opt),
+)
 ```
 
 ---
@@ -36,50 +49,38 @@ results = orchestrator.run()
 python scripts/train_models.py --all --epochs 50 --use-gpu
 
 # Train specific model
-python scripts/train_models.py --model gnn_dti --epochs 100
-python scripts/train_models.py --model toxicity --epochs 50
-python scripts/train_models.py --model property --epochs 80
-python scripts/train_models.py --model vae --epochs 50
+python scripts/train_models.py --models dti --epochs 100
+python scripts/train_models.py --models toxicity --epochs 50
+python scripts/train_models.py --models property --epochs 80
+python scripts/train_models.py --models vae --epochs 50
 ```
 
 ---
 
 ## Common Tasks
 
-### Load Models
-```python
-from src.models.gnn_dti import GNNDTIPredictor
-from src.models.toxicity import ToxicityClassifier
-from src.models.property import PropertyPredictor
-
-dti = GNNDTIPredictor.load('trained_models/dti.pt')
-tox = ToxicityClassifier.load('trained_models/toxicity.pt')
-prop = PropertyPredictor.load('trained_models/property.pt')
-```
-
-### Generate Molecules
-```python
-from src.pipelines.generation import HybridMoleculeGenerator
-
-generator = HybridMoleculeGenerator()
-molecules = generator.generate(num_molecules=100)
-```
-
 ### Predict Properties
 ```python
-from src.pipelines.prediction import MoleculePredictor
+from src.inference import MoleculePredictor
 
-predictor = MoleculePredictor()
-scores = predictor.predict(molecules)
+predictor = MoleculePredictor(protein_sequence="MKFLK...", models_dir="artifacts/models")
+props = predictor.predict_all_properties("CCO")
+print(props["affinity"], props["toxicity"], props["qed"], props["sa"])
+```
+
+### Batch Predict
+```python
+results = predictor.batch_predict(["CCO", "c1ccccc1", "CC(=O)O"])
+# results["affinity"], results["toxicity"], results["qed"], results["sa"]
 ```
 
 ### Load Data
 ```python
-from src.data.loaders import TDCDataLoader
-from src.data.preparers import DTIDatasetPreparer
+from src.data.load.tdc import TDCDataLoader
+from src.data.preparation.dti import DTIDatasetPreparer
 
 loader = TDCDataLoader()
-davis_data = loader.load_dti_data('DAVIS')
+raw = loader.load_dti_data("DAVIS")
 
 preparer = DTIDatasetPreparer()
 data_list, splits, metadata = preparer.prepare_dti_dataset("DAVIS")
@@ -87,22 +88,23 @@ data_list, splits, metadata = preparer.prepare_dti_dataset("DAVIS")
 
 ### Train a Model
 ```python
-from src.training.gnn_dti_trainer import GNNDTITrainer
-from src.data.preparers import DTIDatasetPreparer
+import torch
+from src.models.gnn_dti import GNNDTIPredictor
+from src.training.gnn_dti import GNNDTITrainer
+from src.data.preparation.dti import DTIDatasetPreparer, DTIGraphDataset
+from src.training.utils import create_data_loaders
 
+device = torch.device("cpu")
 preparer = DTIDatasetPreparer()
-data = preparer.prepare_dti_dataset("DAVIS")
-
-trainer = GNNDTITrainer(config)
-trainer.train(
-    X_mol=data['X_mol'],
-    X_prot=data['X_prot'],
-    y=data['y'],
-    splits=data['splits'],
-    epochs=50,
-    batch_size=32
+data_list, splits, metadata = preparer.prepare_dti_dataset("DAVIS")
+dataset = DTIGraphDataset(data_list)
+train_loader, val_loader, _ = create_data_loaders(
+    dataset, splits, batch_size=32, dataset_type="dti"
 )
-trainer.save_checkpoint('trained_models/dti.pt')
+
+model = GNNDTIPredictor(atom_feature_dim=metadata["atom_feature_dim"])
+trainer = GNNDTITrainer(model, device)
+results = trainer.fit(train_loader, val_loader, epochs=50, checkpoint_dir="artifacts/models/dti")
 ```
 
 ---
@@ -132,7 +134,7 @@ trainer.save_checkpoint('trained_models/dti.pt')
 ```bash
 cp configs/config_example.json configs/my_config.json
 # Edit my_config.json
-python src/app/main.py --config configs/my_config.json
+python -m cli.main --config configs/my_config.json
 ```
 
 ---
@@ -160,13 +162,12 @@ python scripts/train_models.py --all --epochs 50  # no --use-gpu
 ### Memory Issues
 ```bash
 # Reduce batch size
-python scripts/train_models.py --model gnn_dti --batch-size 16
+python scripts/train_models.py --models dti --batch-size 16
 ```
 
 ### View Logs
 ```bash
-tail -f aamd.log
-grep ERROR aamd.log
+tail -f training.log
 ```
 
 ---
@@ -178,5 +179,5 @@ grep ERROR aamd.log
 | Source | `src/` |
 | Configs | `configs/` |
 | Scripts | `scripts/` |
-| Trained Models | `trained_models/` |
-| Logs | `aamd.log` |
+| Trained Models | `artifacts/models/` |
+| Logs | `training.log` |

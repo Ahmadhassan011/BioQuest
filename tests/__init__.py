@@ -1,1 +1,1 @@
-"""BioQuest test suite package."""
+"""BioQuest test suite."""

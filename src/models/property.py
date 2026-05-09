@@ -1,9 +1,4 @@
-"""
-Multi-Task Property Predictor Module.
-
-Neural network for predicting multiple molecular properties simultaneously
-using shared representations and task-specific decoders.
-"""
+"""Multi-task neural network for predicting molecular properties (QED, SA, LogP, MW)."""
 
 import logging
 from typing import Dict
@@ -46,6 +41,10 @@ class PropertyPredictor(nn.Module):
             dropout: Dropout probability
         """
         super().__init__()
+
+        self.input_dim = input_dim
+        self.shared_hidden_dim = shared_hidden_dim
+        self.task_hidden_dim = task_hidden_dim
 
         # Shared encoder with residual connections
         self.encoder = nn.Sequential(

@@ -1,14 +1,11 @@
 """
-Logging configuration for BioQuest.
+Rotating file handlers and module-specific logger configuration.
 
-Features:
-- Rotating file handlers to prevent log files from growing too large
-- Module-specific loggers with independent configuration
-- Structured logging with context information
-- Performance monitoring (execution time, memory usage)
-- Request ID tracking for distributed systems
-- Console and file output with different formats
-- Log level control from code or environment variables
+Structured logging with context information
+Performance monitoring (execution time, memory usage)
+Request ID tracking for distributed systems
+Console and file output with different formats
+Log level control from code or environment variables
 """
 
 import logging
