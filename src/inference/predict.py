@@ -14,7 +14,7 @@ from .dti import DTIPredictor, ModelNotLoadedError as DTIErr
 from .toxicity import ToxicityPredictor, ModelNotLoadedError as ToxErr
 from .property import PropertyPredictor, ModelNotLoadedError as PropErr
 from .vae import VAEGenerator
-from ..evaluation.admet import compute_admet_properties, check_lipinski_rule_of_five
+from ..models.featurization import compute_admet_properties, check_lipinski_rule_of_five
 
 logger = logging.getLogger(__name__)
 

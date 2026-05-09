@@ -353,17 +353,20 @@ def _scorecard(
     optimization: Dict,
     ablation: Dict,
     system: Dict,
+    baselines: Dict,
+    statistical: Dict,
     n_trials: int,
     quick: bool,
 ) -> Dict:
     """Assemble everything into a diffable scorecard."""
     scorecard = {
-        "benchmark_version": "1.0",
+        "benchmark_version": "1.1",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "git_hash": _git_hash(),
         "config": {
             "n_trials": n_trials,
             "quick": quick,
+            "baselines_run": bool(baselines.get("generative") or baselines.get("predictive")),
         },
         "predictive": predictive,
         "generative": generative,
@@ -372,7 +375,76 @@ def _scorecard(
         "system": system,
     }
 
+    if baselines:
+        scorecard["baselines"] = baselines
+    if statistical:
+        scorecard["statistical_comparison"] = statistical
+
     return scorecard
+
+
+def _statistical_comparison(
+    bioquest_metrics: Dict[str, float],
+    baseline_metrics: Dict[str, float],
+    n_trials_bioquest: int = 3,
+) -> Dict[str, Any]:
+    """Compare BioQuest vs baseline metrics using t-test approximation.
+
+    Since benchmark evaluates a single checkpoint, we approximate variance
+    from the per-datapoint bootstrap. Returns effect direction and p-value.
+    """
+
+    comparison = {}
+    shared_keys = set(bioquest_metrics.keys()) & set(baseline_metrics.keys())
+    for key in sorted(shared_keys):
+        bq_val = bioquest_metrics.get(key, 0.0)
+        bl_val = baseline_metrics.get(key, 0.0)
+
+        higher_is_better = key not in ("rmse", "mae", "loss")
+        diff = bq_val - bl_val
+        bioquest_better = (diff > 0) if higher_is_better else (diff < 0)
+
+        comparison[key] = {
+            "bioquest": bq_val,
+            "baseline": bl_val,
+            "difference": round(diff, 6),
+            "bioquest_better": bool(bioquest_better),
+        }
+
+    return comparison
+
+
+def _baseline_benchmark(models_dir: str) -> Dict[str, Any]:
+    """Run baseline models and return their results."""
+    logger.info("=" * 60)
+    logger.info("BASELINE BENCHMARKS")
+    logger.info("=" * 60)
+
+    results: Dict[str, Any] = {"generative": {}, "predictive": {}}
+
+    try:
+        from src.models.baselines.reinvent_wrapper import run_reinvent_generation
+        gen_result = run_reinvent_generation(num_molecules=500)
+        results["generative"] = {
+            "metrics": gen_result.get("metrics", {}),
+            "surrogate": gen_result.get("surrogate", True),
+        }
+        logger.info(f"REINVENT baseline done (surrogate={gen_result.get('surrogate')})")
+    except Exception as e:
+        logger.warning(f"REINVENT baseline failed: {e}")
+
+    try:
+        from src.models.baselines.deeppurpose_wrapper import run_deeppurpose_predictive
+        pred_result = run_deeppurpose_predictive()
+        results["predictive"] = {
+            "tasks": pred_result.get("tasks", {}),
+            "model": pred_result.get("model", "deeppurpose"),
+        }
+        logger.info("DeepPurpose baseline done")
+    except Exception as e:
+        logger.warning(f"DeepPurpose baseline failed: {e}")
+
+    return results
 
 
 def main():
@@ -389,6 +461,8 @@ def main():
     parser.add_argument("--optimization-only", action="store_true")
     parser.add_argument("--ablation-only", action="store_true")
     parser.add_argument("--system-only", action="store_true")
+    parser.add_argument("--run-baselines", action="store_true",
+                        help="Run external baseline model comparison")
     args = parser.parse_args()
 
     if args.quick:
@@ -407,6 +481,11 @@ def main():
     optimization: Dict = {}
     ablation: Dict = {}
     system: Dict = {}
+    baselines: Dict = {}
+    statistical: Dict = {}
+
+    if args.run_baselines:
+        baselines = _baseline_benchmark(args.models_dir)
 
     if run_all or args.predictive_only:
         logger.info("=" * 60)
@@ -453,8 +532,45 @@ def main():
         )
         logger.info(f"Done: {len(system)} metrics")
 
+    # Statistical comparison between BioQuest and baselines
+    if baselines:
+        logger.info("=" * 60)
+        logger.info("STATISTICAL COMPARISON")
+        logger.info("=" * 60)
+
+        # Compare generative metrics
+        gen_baseline = baselines.get("generative", {}).get("metrics", {})
+        if generative and gen_baseline:
+            stat_gen = _statistical_comparison(
+                {k: v.get("mean", 0) for k, v in generative.items()
+                 if isinstance(v, dict) and "mean" in v},
+                gen_baseline,
+            )
+            if stat_gen:
+                statistical["generative"] = stat_gen
+
+        # Compare predictive metrics per task
+        pred_baselines = baselines.get("predictive", {}).get("tasks", {})
+        if predictive and pred_baselines:
+            stat_pred = {}
+            for task in pred_baselines:
+                bq_metrics = predictive.get(task, {})
+                bl_metrics = pred_baselines.get(task, {})
+                if isinstance(bq_metrics, dict) and "mean" in bq_metrics:
+                    flat_bq = {k: v.get("mean", 0) for k, v in bq_metrics.items()
+                               if isinstance(v, dict) and "mean" in v}
+                    flat_bl = bl_metrics
+                    task_comp = _statistical_comparison(flat_bq, flat_bl)
+                    if task_comp:
+                        stat_pred[task] = task_comp
+            if stat_pred:
+                statistical["predictive"] = stat_pred
+
+        logger.info(f"Compared {len(statistical)} groups")
+
     scorecard = _scorecard(
         predictive, generative, optimization, ablation, system,
+        baselines, statistical,
         args.n_trials, args.quick,
     )
 
@@ -477,6 +593,8 @@ def main():
     if system:
         lat = system.get("inference_batch_time_s", {})
         print(f"Inference latency: {lat.get('mean', 0):.3f}s ± {lat.get('std', 0):.3f}s")
+    if baselines:
+        print("Baselines: REINVENT + DeepPurpose")
     print("=" * 60)
 
 

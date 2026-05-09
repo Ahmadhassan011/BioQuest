@@ -5,6 +5,7 @@ from .gnn_dti import GNNDTITrainer
 from .toxicity import ToxicityClassifierTrainer
 from .property import PropertyPredictorTrainer
 from .vae import MoleculeVAETrainer
+from .validator import ModelValidator
 
 __all__ = [
     "Trainer",
@@ -12,4 +13,5 @@ __all__ = [
     "ToxicityClassifierTrainer",
     "PropertyPredictorTrainer",
     "MoleculeVAETrainer",
+    "ModelValidator",
 ]
