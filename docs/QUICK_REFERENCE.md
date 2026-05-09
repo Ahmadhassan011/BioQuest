@@ -57,6 +57,19 @@ python scripts/train_models.py --models vae --epochs 50
 
 ---
 
+## Datasets
+
+| Dataset | Records | Split | Model |
+|---------|---------|-------|-------|
+| DAVIS | 7,429 graphs | 80/10/10 | GNN-DTI |
+| Tox21 NR-AR | 7,265 compounds | 80/10/10 | Toxicity |
+| ChEMBL (0.052) | 100,931 molecules | 80/10/10 | VAE |
+| Lipophilicity | 4,200 compounds | 80/10/10 | Property |
+
+Supplementary raw: KIBA (117,657), BindingDB (52,274).
+
+---
+
 ## Common Tasks
 
 ### Predict Properties

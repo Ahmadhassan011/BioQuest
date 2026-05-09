@@ -143,11 +143,19 @@ prop_model = loader.load_property_model()
 
 ## Data Sources
 
-| Dataset | Purpose | Size |
-|---------|---------|------|
-| DAVIS | DTI prediction | 7,429 interactions (after filtering) |
-| Tox21 | Toxicity classification | 7,831 compounds |
-| ChEMBL | VAE pretraining | Millions of molecules |
+| Dataset | Purpose | Raw | Processed |
+|---------|---------|-----|-----------|
+| DAVIS | DTI prediction (GNN) | 25,772 interactions<br>485 drugs × 4,485 targets | 7,429 graphs (censored ≥ 3) |
+| Tox21 (NR-AR) | Toxicity classification | 77,946 cpd × 12 assays | 7,265 compounds, 264-dim fingerprints |
+| ChEMBL | VAE pretraining | ~194M molecules<br>(100,931 @ 0.052 frac) | 100,931 tokenized sequences (max 100 chars) |
+| Lipophilicity | Property prediction (QED, SA, logP, MW) | 4,200 compounds | 4,200 compounds, 264-dim fingerprints |
+
+Additional raw-only datasets (via `scripts/download_all_datasets.py`):
+
+| Dataset | Source | Records |
+|---------|--------|---------|
+| KIBA | DTI supplementary | 117,657 interactions |
+| BindingDB | DTI supplementary | 52,274 interactions |
 
 ---
 

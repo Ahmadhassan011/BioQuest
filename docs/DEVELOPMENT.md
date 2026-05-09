@@ -277,14 +277,32 @@ export BIOQUEST_LOG_LEVEL=DEBUG
 
 ## Data Sources
 
-### DAVIS (DTI)
-- 4,485 proteins, 68 drugs, 30,056 interactions (7,429 after censored filter)
+Datasets are downloaded via PyTDC to `data/raw/` and featurized to `data/processed/`.
 
-### Tox21 (Toxicity)
-- 7,831 compounds, 12 assays
+| Dataset | Model | Raw Records | Processed Records | Featurization |
+|---------|-------|-------------|-------------------|---------------|
+| **DAVIS** | GNN-DTI | 25,772 drug–target pairs<br>(485 drugs, 4,485 targets) | 7,429 graphs<br>(censored filter: Y ≥ 3) | Drug: atom graphs (15-dim node features)<br>Target: 1024-char AA sequence |
+| **Tox21 NR-AR** | Toxicity Classifier | 77,946 rows across 12 assays | 7,265 compounds<br>(single assay: NR-AR) | Morgan fingerprints (264-bit)<br>Binary labels (active/inactive) |
+| **ChEMBL** | MoleculeVAE | ~194M molecules<br>(100,931 @ default 0.052 frac) | 100,931 sequences<br>(tokenized, max 100 chars) | Character-level tokenization<br>(one-hot → indices) |
+| **Lipophilicity** | Property Predictor | 4,200 compounds | 4,200 compounds | Morgan fingerprints (264-bit)<br>Targets: QED, SA, logP, MW |
 
-### ChEMBL (VAE)
-- Millions of drug-like molecules
+### Split Ratios
+All datasets use 80/10/10 train/val/test splits.
+
+| Dataset | Train | Val | Test |
+|---------|-------|-----|------|
+| DAVIS | 5,945 | 742 | 742 |
+| Tox21 NR-AR | 5,813 | 726 | 726 |
+| ChEMBL (0.052) | 80,745 | 10,093 | 10,093 |
+| Lipophilicity | 3,360 | 420 | 420 |
+
+### Supplementary Datasets (Raw Only)
+Downloaded via `scripts/download_all_datasets.py`; not used in model training directly.
+
+| Dataset | Source | Description |
+|---------|--------|-------------|
+| **KIBA** | PyTDC (DTI) | Kinase inhibitor bioactivity (117,657 interactions) |
+| **BindingDB** | PyTDC (DTI) | Binding affinity database (52,274 interactions) |
 
 ---
 

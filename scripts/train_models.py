@@ -167,7 +167,7 @@ def train_vae_model(
     checkpoint_dir: str = "artifacts/models/vae",
     use_gpu: bool = False,
     kl_anneal_epochs: int = 50,
-    chembl_frac: float = 0.1,
+    chembl_frac: float = 0.052,
 ) -> Dict:
     """
     Train Variational Autoencoder model on ChEMBL data.
@@ -294,8 +294,8 @@ def main():
     parser.add_argument(
         "--chembl-frac",
         type=float,
-        default=0.1,
-        help="Fraction of ChEMBL dataset to use for VAE training",
+        default=0.052,
+        help="Fraction of ChEMBL dataset (~1.94M total) to use for VAE training",
     )
     parser.add_argument(
         "--prop-dataset",

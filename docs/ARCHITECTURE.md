@@ -41,6 +41,17 @@ PyTDC → TDCDataLoader → DatasetPreparer → featurization → DataCache → 
 
 <img src="./diagrams/data-flow.png" width="700" />
 
+### Dataset Counts
+
+| Dataset | Raw | Processed | Used By |
+|---------|-----|-----------|---------|
+| DAVIS DTI | 25,772 pairs | 7,429 graphs | GNNDTITrainer |
+| Tox21 NR-AR | 77,946 rows | 7,265 fingerprints | ToxicityClassifierTrainer |
+| ChEMBL (0.052) | 100,931 mols | 100,931 tokenized | MoleculeVAETrainer |
+| Lipophilicity | 4,200 mols | 4,200 fingerprints | PropertyPredictorTrainer |
+
+All datasets split 80/10/10 train/val/test.
+
 ---
 
 ## Key Components
@@ -129,13 +140,4 @@ PyTDC → TDCDataLoader → DatasetPreparer → featurization → DataCache → 
 
 Objectives weights must sum to 1.0.
 
----
 
-## Performance
-
-| Model | Parameters | Training (GPU) | Inference |
-|-------|------------|----------------|-----------|
-| GNN-DTI | 860K | 30-60 min | 100ms |
-| Toxicity | 540K | 15-30 min | 50ms |
-| Property | 380K | 20-40 min | 30ms |
-| VAE | 600K | 30-60 min | 50ms |
