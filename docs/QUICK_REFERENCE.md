@@ -12,6 +12,16 @@ python -m cli.main --config configs/config_example.json
 python -m cli.main --help
 ```
 
+### Data & Training CLI
+```bash
+python -m cli prepare all              # prepare all datasets
+python -m cli prepare dti --scaffold   # prepare with scaffold split
+python -m cli train                    # train all models (default)
+python -m cli train dti vae           # train specific models
+python -m cli train all --epochs 100 --gpu
+python -m cli cache                    # show cached datasets
+```
+
 ### Web UI
 ```bash
 streamlit run ui/streamlit_app.py
@@ -45,14 +55,13 @@ orchestrator = AgentOrchestrator(
 ## Training Models
 
 ```bash
-# Train all models
-python scripts/train_models.py --all --epochs 50 --use-gpu
+# Train all models (default)
+python -m cli train
 
-# Train specific model
-python scripts/train_models.py --models dti --epochs 100
-python scripts/train_models.py --models toxicity --epochs 50
-python scripts/train_models.py --models property --epochs 80
-python scripts/train_models.py --models vae --epochs 50
+# Train specific
+python -m cli train dti
+python -m cli train dti toxicity vae property
+python -m cli train all --epochs 100 --gpu
 ```
 
 ---
@@ -169,13 +178,13 @@ export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 python -c "import torch; print(torch.cuda.is_available())"
 
 # Use CPU only
-python scripts/train_models.py --all --epochs 50  # no --use-gpu
+python -m cli train  # defaults to CPU
 ```
 
 ### Memory Issues
 ```bash
 # Reduce batch size
-python scripts/train_models.py --models dti --batch-size 16
+python -m cli train dti --batch-size 16
 ```
 
 ### View Logs

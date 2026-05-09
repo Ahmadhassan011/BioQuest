@@ -99,6 +99,17 @@ All datasets split 80/10/10 train/val/test (scaffold split available via `use_sc
 - **vae.py**: VAEGenerator
 - **predict.py**: MoleculePredictor (orchestrates all 4 inference models)
 
+### cli/
+- **\_\_main\_\_.py**: CLI dispatcher — `prepare`, `train`, `cache` commands
+- **main.py**: Original CLI (`python -m cli.main`) for optimization runs
+- **data.py**: `prepare` and `cache` command implementations
+- **train.py**: `train` command implementation with `--config` support
+
+### src/utils/
+- **pipeline.py**: PipelineConfig dataclass (serializes all data + training params to/from JSON)
+- **config.py**: Config loader for experiment config files
+- **logging_config.py**: Structured logging with PerformanceTimer
+
 ### src/evaluation/
 - **metrics.py**: Regression (RMSE, MAE, R²) and classification (AUC, F1) metrics
 - **generation.py**: Molecule generation quality metrics (validity, uniqueness, novelty, diversity, KL divergence)
@@ -112,6 +123,7 @@ All datasets split 80/10/10 train/val/test (scaffold split available via `use_sc
 - **load/tdc.py**: TDCDataLoader (PyTDC download with local caching)
 - **load/handlers.py**: Protein/Drug/Graph data handlers
 - **load/dataset.py**: BioQuestDataset, ObjectiveHandler
+- **preparation/base.py**: BaseDatasetPreparer, scaffold_split_indices (Murcko scaffold splitting)
 - **preparation/dti.py**: DTIDatasetPreparer
 - **preparation/toxicity.py**: Tox21DatasetPreparer
 - **preparation/property.py**: PropertyDatasetPreparer

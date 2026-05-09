@@ -8,14 +8,13 @@ Training, configuration, caching, and logging for BioQuest.
 
 ### Quick Start
 ```bash
-# Train all models
-python scripts/train_models.py --all --epochs 50 --use-gpu
+# Train all models (default)
+python -m cli train
 
-# Train specific model
-python scripts/train_models.py --models dti --epochs 100
-python scripts/train_models.py --models toxicity --epochs 50
-python scripts/train_models.py --models property --epochs 80
-python scripts/train_models.py --models vae --epochs 50
+# Train specific models
+python -m cli train dti
+python -m cli train dti toxicity vae property
+python -m cli train all --epochs 100 --gpu --lr 0.001
 ```
 
 ### Programmatic Training
@@ -111,7 +110,7 @@ from src.training.utils import create_data_loaders
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 preparer = VAEDatasetPreparer()
-X, splits, metadata = preparer.prepare_vae_dataset(sample_frac=0.1)
+X, splits, metadata = preparer.prepare_vae_dataset(sample_frac=0.052)
 dataset = TensorDataset(torch.from_numpy(X).long())
 train_loader, val_loader, _ = create_data_loaders(
     dataset, splits, batch_size=64, dataset_type="vae"
@@ -263,8 +262,24 @@ The `--ablation` CLI flag disables specific agents to measure their contribution
 | `single_pass` | One generation + evaluation pass, no iterative loop |
 
 ```bash
+# Via optimization CLI
 python -m cli.main --config configs/config_example.json --ablation no_refiner
 python -m cli.main --config configs/config_example.json --ablation single_pass
+
+# Via Python API
+from src.core.agents import AgentOrchestrator
+
+orchestrator = AgentOrchestrator(
+    generator_agent, evaluator_agent, refiner_agent,
+    ablation_mode="no_refiner",
+)
+```
+
+Data preparation and training also support `--save-config` / `--config` for
+reproducible pipeline configs via `PipelineConfig`:
+```bash
+python -m cli prepare all --save-config experiments/run1.json
+python -m cli train --config experiments/run1.json --gpu
 ```
 
 ---
@@ -388,16 +403,16 @@ Downloaded via `scripts/download_all_datasets.py`; not used in model training di
 
 ### Out of Memory
 ```bash
-python scripts/train_models.py --models dti --batch-size 16
+python -m cli train dti --batch-size 16
 ```
 
 ### Loss Not Decreasing
 ```bash
-python scripts/train_models.py --models dti --learning-rate 0.0005
+python -m cli train dti --lr 0.0005
 ```
 
 ### CUDA Errors
 ```bash
 python -c "import torch; print(torch.cuda.is_available())"
-python scripts/train_models.py --models dti  # CPU fallback
+python -m cli train dti  # CPU fallback
 ```

@@ -32,9 +32,15 @@ git clone https://github.com/Ahmadhassan011/BioQuest.git
 cd BioQuest
 python -m venv .venv
 source .venv/bin/activate
-pip install -e .
+pip install -r requirements.txt
 
-# Run with config
+# Prepare all datasets
+python -m cli prepare all
+
+# Train all models (50 epochs, GPU)
+python -m cli train --epochs 50 --gpu
+
+# Run optimization with config
 python -m cli.main --config configs/config_example.json
 
 # Or use web UI
@@ -46,20 +52,40 @@ streamlit run ui/streamlit_app.py
 ## Training
 
 ```bash
-# Train all models (50 epochs, GPU)
-python scripts/train_models.py --all --epochs 50 --use-gpu
+# Train all models
+python -m cli train                  # defaults: all models, 50 epochs, CPU
 
 # Train specific models
-python scripts/train_models.py --models dti --epochs 100
-python scripts/train_models.py --models toxicity --epochs 50
-python scripts/train_models.py --models property --epochs 80
-python scripts/train_models.py --models vae --epochs 50
+python -m cli train dti              # DTI only
+python -m cli train dti vae          # multiple
+python -m cli train all --epochs 100 --gpu --lr 0.001
 
-# Custom checkpoint directory (default: artifacts/models/)
-python scripts/train_models.py --all --checkpoint-dir ./checkpoints
+# Custom checkpoint directory
+python -m cli train --checkpoint-dir ./checkpoints
 ```
 
 Trained model checkpoints are saved to `artifacts/models/{dti,toxicity,vae,properties}/best_model.pt`.
+
+---
+
+## Data Preparation
+
+```bash
+# Prepare individual datasets
+python -m cli prepare dti
+python -m cli prepare toxicity
+python -m cli prepare vae
+python -m cli prepare property
+
+# Prepare all datasets at once
+python -m cli prepare all
+
+# With scaffold split
+python -m cli prepare dti --scaffold
+
+# Show cached datasets
+python -m cli cache
+```
 
 ---
 
@@ -173,6 +199,20 @@ python -m cli.main --config configs/config_example.json --ablation no_generator
 
 # Single pass (one iteration only)
 python -m cli.main --config configs/config_example.json --ablation single_pass
+```
+
+---
+
+## Pipeline Config
+
+Save and reuse full experiment configs for reproducibility:
+
+```bash
+# Save config during data preparation
+python -m cli prepare all --save-config experiments/run1.json
+
+# Train using saved config
+python -m cli train --config experiments/run1.json --gpu
 ```
 
 ---
