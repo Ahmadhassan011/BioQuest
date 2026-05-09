@@ -49,11 +49,11 @@ class PropertyPredictor(nn.Module):
         # Shared encoder with residual connections
         self.encoder = nn.Sequential(
             nn.Linear(input_dim, shared_hidden_dim),
-            nn.BatchNorm1d(shared_hidden_dim),
+            nn.LayerNorm(shared_hidden_dim),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(shared_hidden_dim, shared_hidden_dim),
-            nn.BatchNorm1d(shared_hidden_dim),
+            nn.LayerNorm(shared_hidden_dim),
             nn.ReLU(),
             nn.Dropout(dropout),
         )

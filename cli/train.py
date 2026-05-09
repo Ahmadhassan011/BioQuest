@@ -90,6 +90,7 @@ def _train_toxicity(args) -> Dict:
 
 
 def _train_vae(args) -> Dict:
+    from src.data.tokenizer import VOCAB_SIZE
     from src.models.vae import MoleculeVAE
     from src.training.vae import MoleculeVAETrainer
     device = torch.device("cuda" if args.use_gpu and torch.cuda.is_available() else "cpu")
@@ -98,7 +99,7 @@ def _train_vae(args) -> Dict:
     train_loader, val_loader, _ = create_data_loaders(
         TensorDataset(torch.from_numpy(X).long()),
         splits, batch_size=args.batch_size, dataset_type="vae")
-    model = MoleculeVAE(vocab_size=len(prep.smiles_chars), latent_dim=64)
+    model = MoleculeVAE(vocab_size=VOCAB_SIZE, latent_dim=64)
     trainer = MoleculeVAETrainer(model, device, learning_rate=args.learning_rate)
     return trainer.fit(train_loader, val_loader, epochs=args.epochs,
                        checkpoint_dir=f"{args.checkpoint_dir}/vae")

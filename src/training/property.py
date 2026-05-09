@@ -217,6 +217,15 @@ class PropertyPredictorTrainer(Trainer):
             if len(preds) == 0:
                 continue
 
+            # Filter out NaN predictions
+            valid_mask = ~np.isnan(preds)
+            if not valid_mask.any():
+                val_metrics[f"val_{task}_mae"] = 0.0
+                val_metrics[f"val_{task}_r2"] = 0.0
+                continue
+            preds = preds[valid_mask]
+            targets = targets[valid_mask]
+
             # All tasks are regression (QED is continuous [0,1], SA [0,1],
             # LogP [-1,1] normalized, MW [0,1] normalized)
             val_metrics[f"val_{task}_mae"] = mean_absolute_error(targets, preds)
