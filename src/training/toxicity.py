@@ -8,8 +8,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from sklearn.metrics import roc_auc_score, f1_score
-
+from sklearn.metrics import roc_auc_score, average_precision_score, f1_score
 from sklearn.metrics import matthews_corrcoef
 
 from ..models import ToxicityClassifier
@@ -60,6 +59,7 @@ class ToxicityClassifierTrainer(Trainer):
                 "train_loss",
                 "val_loss",
                 "val_auc",
+                "val_pr_auc",
                 "val_f1",
                 "val_mcc",
                 "learning_rate",
@@ -164,6 +164,13 @@ class ToxicityClassifierTrainer(Trainer):
             logger.warning(f"Could not calculate AUC: {e}")
             auc = 0.0
 
+        # Calculate PR-AUC (recommended for imbalanced bioassay data)
+        try:
+            pr_auc = average_precision_score(all_labels, all_preds)
+        except Exception as e:
+            logger.warning(f"Could not calculate PR-AUC: {e}")
+            pr_auc = 0.0
+
         # Calculate F1 and MCC (omit Accuracy, Precision, Recall as redundant)
         try:
             f1 = f1_score(all_labels, binary_preds, zero_division=0)
@@ -176,6 +183,7 @@ class ToxicityClassifierTrainer(Trainer):
         return {
             "loss": avg_loss,
             "auc": auc,
+            "pr_auc": pr_auc,
             "f1": f1,
             "mcc": mcc,
         }
@@ -218,6 +226,7 @@ class ToxicityClassifierTrainer(Trainer):
                 train_loss=train_loss,
                 val_loss=val_metrics["loss"],
                 val_auc=val_metrics["auc"],
+                val_pr_auc=val_metrics.get("pr_auc", 0.0),
                 val_f1=val_metrics["f1"],
                 val_mcc=val_metrics["mcc"],
                 learning_rate=lr,
@@ -227,6 +236,7 @@ class ToxicityClassifierTrainer(Trainer):
                 f"Epoch {epoch + 1}/{epochs} | "
                 f"Loss: {train_loss:.4f} | "
                 f"AUC: {val_metrics['auc']:.4f} | "
+                f"PR-AUC: {val_metrics.get('pr_auc', 0.0):.4f} | "
                 f"F1: {val_metrics['f1']:.4f} | "
                 f"MCC: {val_metrics['mcc']:.4f}"
             )

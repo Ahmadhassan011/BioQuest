@@ -41,7 +41,7 @@ def _check_binary_classes(y_true: np.ndarray) -> bool:
 
 def compute_classification_metrics(y_true: np.ndarray, y_pred: np.ndarray, threshold: float = 0.5) -> Dict[str, float]:
     """
-    Compute classification metrics.
+    Compute classification metrics including PR-AUC.
 
     Handles single-class inputs gracefully — AUC and confusion-matrix
     fields default to 0.0 when only one class is present.
@@ -52,12 +52,12 @@ def compute_classification_metrics(y_true: np.ndarray, y_pred: np.ndarray, thres
         threshold: Classification threshold
 
     Returns:
-        Dictionary with AUC, accuracy, precision, recall, F1
+        Dictionary with AUC, PR-AUC, accuracy, precision, recall, F1
     """
     try:
         from sklearn.metrics import (
-            roc_auc_score, accuracy_score, precision_score,
-            recall_score, f1_score, confusion_matrix
+            roc_auc_score, average_precision_score, accuracy_score,
+            precision_score, recall_score, f1_score, confusion_matrix,
         )
     except ImportError:
         return {"error": "sklearn not available"}
@@ -66,6 +66,7 @@ def compute_classification_metrics(y_true: np.ndarray, y_pred: np.ndarray, thres
     both_classes = _check_binary_classes(y_true)
 
     auc = roc_auc_score(y_true, y_pred) if both_classes else 0.0
+    pr_auc = average_precision_score(y_true, y_pred) if both_classes else 0.0
     accuracy = accuracy_score(y_true, binary_pred)
     precision = precision_score(y_true, binary_pred, zero_division=0)
     recall = recall_score(y_true, binary_pred, zero_division=0)
@@ -76,6 +77,7 @@ def compute_classification_metrics(y_true: np.ndarray, y_pred: np.ndarray, thres
 
     return {
         "auc": float(auc),
+        "pr_auc": float(pr_auc),
         "accuracy": float(accuracy),
         "precision": float(precision),
         "recall": float(recall),

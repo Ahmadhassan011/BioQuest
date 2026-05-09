@@ -148,19 +148,20 @@ class PropertyDatasetPreparer(BasePreparer):
             if property_data is None or len(property_data) == 0:
                 raise ValueError(f"Failed to load {dataset_name} dataset from PyTDC")
 
-            smiles_list = property_data["Drug"].tolist()
+            raw_smiles = property_data["Drug"].tolist()
 
             all_features = []
             all_qed, all_sa, all_logp, all_mw = [], [], [], []
             successful_smiles = []
 
             logger.info(
-                f"Featurizing and calculating properties for {len(smiles_list)} molecules..."
+                f"Featurizing and calculating properties for {len(raw_smiles)} molecules..."
             )
-            for smiles in smiles_list:
+            for smiles in raw_smiles:
                 mol = Chem.MolFromSmiles(smiles)
                 if mol is None:
                     continue
+                smiles = Chem.MolToSmiles(mol)  # canonicalize
 
                 qed = Descriptors.qed(mol)
                 logp = Descriptors.MolLogP(mol)

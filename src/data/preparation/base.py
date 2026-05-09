@@ -22,10 +22,14 @@ def scaffold_split_indices(
 ) -> Dict[str, np.ndarray]:
     """Split molecules by Murcko scaffold so no scaffold appears in multiple splits.
 
+    Uses sample-count-balanced assignment: scaffolds are greedily assigned
+    to splits until the desired fraction of total samples is reached.
+    This prevents small scaffold groups from dominating split sizes.
+
     Args:
         smiles_list: List of SMILES strings.
-        val_frac: Fraction of scaffolds for validation.
-        test_frac: Fraction of scaffolds for test.
+        val_frac: Fraction of samples for validation.
+        test_frac: Fraction of samples for test.
         seed: Random seed for reproducibility.
 
     Returns:
@@ -47,23 +51,22 @@ def scaffold_split_indices(
     scaffolds = list(scaffold_to_indices.keys())
     rng.shuffle(scaffolds)
 
-    n = len(scaffolds)
-    test_count = max(1, int(n * test_frac))
-    val_count = max(1, int(n * val_frac))
+    n_total = len(smiles_list)
+    test_target = int(n_total * test_frac)
+    val_target = int(n_total * val_frac)
 
-    val_scaffolds = set(scaffolds[:val_count])
-    train_scaffolds = set(scaffolds[test_count + val_count:])
+    test_idx: List[int] = []
+    val_idx: List[int] = []
+    train_idx: List[int] = []
 
-    train_idx = []
-    val_idx = []
-    test_idx = []
-    for scaf, idx_list in scaffold_to_indices.items():
-        if scaf in train_scaffolds:
-            train_idx.extend(idx_list)
-        elif scaf in val_scaffolds:
+    for scaf in scaffolds:
+        idx_list = scaffold_to_indices[scaf]
+        if len(test_idx) < test_target:
+            test_idx.extend(idx_list)
+        elif len(val_idx) < val_target:
             val_idx.extend(idx_list)
         else:
-            test_idx.extend(idx_list)
+            train_idx.extend(idx_list)
 
     return {
         "train": np.array(train_idx, dtype=int),

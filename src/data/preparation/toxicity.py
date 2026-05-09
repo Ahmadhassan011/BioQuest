@@ -60,15 +60,21 @@ class Tox21DatasetPreparer(BasePreparer):
             filtered_data = tox_data[tox_data["assay"] == assay].copy()
             assay_data = filtered_data[["Drug", "Y"]].dropna()
 
-            valid_mask = assay_data["Drug"].apply(lambda x: Chem.MolFromSmiles(x) is not None)
-            original_count = len(assay_data)
-            assay_data = assay_data[valid_mask].reset_index(drop=True)
-            filtered_count = len(assay_data)
-            if filtered_count < original_count:
-                logger.warning(f"Filtered out {original_count - filtered_count} invalid SMILES")
-
-            smiles_list = assay_data["Drug"].tolist()
+            # Canonicalize and validate SMILES
+            raw_smiles = assay_data["Drug"].tolist()
             labels = assay_data["Y"].to_numpy(dtype=np.float32)
+            smiles_list = []
+            kept_labels = []
+            for smi, label in zip(raw_smiles, labels):
+                mol = Chem.MolFromSmiles(smi)
+                if mol is not None:
+                    smiles_list.append(Chem.MolToSmiles(mol))
+                    kept_labels.append(label)
+            labels = np.array(kept_labels, dtype=np.float32)
+
+            original_count = len(assay_data)
+            if len(smiles_list) < original_count:
+                logger.warning(f"Filtered out {original_count - len(smiles_list)} invalid/non-canonical SMILES")
 
             logger.info(f"Featurizing {len(smiles_list)} molecules for {assay}...")
             mol_features = self.featurizer.batch_featurize_molecules(smiles_list)

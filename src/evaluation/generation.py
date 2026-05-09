@@ -120,6 +120,55 @@ def compute_kl_divergence(
     return kl_results
 
 
+def compute_fcd_score(generated: List[str], reference: List[str]) -> float:
+    """Compute Fréchet ChemNet Distance (FCD) proxy using Morgan fingerprints.
+
+    Uses ECFP6 (radius=3, 2048 bits) as the feature space instead of
+    ChemNet activations.  This is a common approximation when the full
+    ChemNet model is not available.
+
+    Args:
+        generated: List of generated SMILES.
+        reference: List of reference (training set) SMILES.
+
+    Returns:
+        FCD score (lower = more similar distributions).
+        Returns inf if either set has <2 valid molecules.
+    """
+    from rdkit.Chem import AllChem, DataStructs
+    from scipy.linalg import sqrtm
+
+    def _fingerprint_matrix(smiles_list):
+        fps = []
+        for smi in smiles_list:
+            mol = Chem.MolFromSmiles(smi)
+            if mol is None:
+                continue
+            arr = np.zeros(2048, dtype=np.float32)
+            fp = AllChem.GetMorganFingerprintAsBitVect(mol, 3, nBits=2048)
+            DataStructs.ConvertToNumpyArray(fp, arr)
+            fps.append(arr)
+        return np.array(fps) if fps else None
+
+    mu_gen = _fingerprint_matrix(generated)
+    mu_ref = _fingerprint_matrix(reference)
+
+    if mu_gen is None or mu_ref is None or len(mu_gen) < 2 or len(mu_ref) < 2:
+        return float("inf")
+
+    mean_gen = np.mean(mu_gen, axis=0)
+    mean_ref = np.mean(mu_ref, axis=0)
+    cov_gen = np.cov(mu_gen, rowvar=False)
+    cov_ref = np.cov(mu_ref, rowvar=False)
+
+    diff = mean_gen - mean_ref
+    cov_mean = sqrtm(cov_gen @ cov_ref, disp_maxiter=1000)
+    if np.iscomplexobj(cov_mean):
+        cov_mean = cov_mean.real
+
+    return float(np.real(diff @ diff + np.trace(cov_gen + cov_ref - 2 * cov_mean)))
+
+
 def _compute_sa_score(mol: Chem.Mol) -> float:
     """Estimate synthetic accessibility (0 = hard, 1 = easy)."""
     num_atoms = mol.GetNumAtoms()
@@ -141,6 +190,7 @@ def compute_all_generation_metrics(
 
     if reference_smiles is not None:
         metrics["novelty"] = compute_novelty(generated, reference_smiles)
+        metrics["fcd"] = compute_fcd_score(generated, reference_smiles)
         gen_qeds = []
         gen_sas = []
         for smi in generated:

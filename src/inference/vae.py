@@ -9,6 +9,8 @@ from typing import List, Optional
 import torch
 from pathlib import Path
 
+from src.data.tokenizer import indices_to_smiles, smiles_to_indices, VOCAB_SIZE
+
 logger = logging.getLogger(__name__)
 
 
@@ -25,7 +27,6 @@ class VAEGenerator:
         """
         self.device = torch.device("cuda" if (use_gpu and torch.cuda.is_available()) else "cpu")
         self._model = None
-        self._vocab = None
         self._load_models(models_dir)
 
     def _load_models(self, models_dir: str) -> None:
@@ -39,8 +40,9 @@ class VAEGenerator:
                 checkpoint = torch.load(model_path, map_location=self.device, weights_only=False)
                 arch_config = checkpoint.get("model_config", {})
 
+                default_vocab = arch_config.get("vocab_size", None) or VOCAB_SIZE
                 self._model = MoleculeVAE(
-                    vocab_size=arch_config.get("vocab_size", 100),
+                    vocab_size=default_vocab,
                     embedding_dim=arch_config.get("embedding_dim", 128),
                     hidden_dim=arch_config.get("hidden_dim", 256),
                     latent_dim=arch_config.get("latent_dim", 64),
@@ -52,11 +54,6 @@ class VAEGenerator:
                 logger.info(f"VAE model loaded from {model_path}")
             else:
                 logger.warning(f"VAE model not found at {model_path}")
-
-            # SMILES vocabulary
-            self._vocab = (
-                "CNOPSFClBrIBrnops0123456789()[]#=-+/%\\@"
-            )
 
         except Exception as e:
             logger.warning(f"Could not load VAE model: {e}")
@@ -173,7 +170,7 @@ class VAEGenerator:
         try:
             from rdkit import Chem
 
-            z = torch.randn(num_molecules, 64).to(self.device)
+            z = torch.randn(num_molecules, self._model.latent_dim).to(self.device)
             generated = []
 
             for i in range(num_molecules):
@@ -191,24 +188,11 @@ class VAEGenerator:
             return []
 
     def _smiles_to_indices(self, smiles: str) -> Optional[List[int]]:
-        """Convert SMILES to token indices."""
-        if self._vocab is None:
-            return None
-
-        indices = []
-        for c in smiles:
-            if c in self._vocab:
-                indices.append(self._vocab.index(c))
-            else:
-                return None
-
-        return indices
+        """Convert SMILES to token indices using shared tokenizer."""
+        arr = smiles_to_indices(smiles, max_len=100)
+        return arr.tolist()
 
     def _indices_to_smiles(self, indices: torch.Tensor) -> str:
-        """Convert token indices to SMILES."""
-        if self._vocab is None:
-            return ""
-
-        idx_list = indices.cpu().numpy().flatten().tolist()
-        chars = [self._vocab[i] if i < len(self._vocab) else '' for i in idx_list]
-        return ''.join(chars).split('<eos>')[0].strip()
+        """Convert token indices to SMILES using shared tokenizer."""
+        idx_arr = indices.cpu().numpy().flatten()
+        return indices_to_smiles(idx_arr)

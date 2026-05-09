@@ -105,11 +105,20 @@ class DTIDatasetPreparer(BasePreparer):
                     f"(Y=10000) from {dataset_name}"
                 )
 
-            smiles_list = dti_data["Drug"].tolist()
+            from rdkit import Chem
+
+            raw_smiles = dti_data["Drug"].tolist()
             protein_seqs = dti_data["Target"].tolist()
             affinities = dti_data["Y"].tolist()
 
-            logger.info(f"Loaded {len(smiles_list)} DTI interactions after filtering")
+            logger.info(f"Loaded {len(raw_smiles)} DTI interactions after filtering")
+
+            # Canonicalize SMILES
+            smiles_list = []
+            for s in raw_smiles:
+                mol = Chem.MolFromSmiles(s)
+                if mol is not None:
+                    smiles_list.append(Chem.MolToSmiles(mol))
 
             logger.info(
                 f"Featurizing molecules and proteins (truncating proteins to {max_prot_len})..."

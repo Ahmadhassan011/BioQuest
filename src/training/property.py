@@ -8,7 +8,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import numpy as np
-from sklearn.metrics import roc_auc_score, f1_score, mean_absolute_error, r2_score
+from sklearn.metrics import mean_absolute_error, r2_score
 
 from ..models.property import PropertyPredictor
 from .base import Trainer
@@ -50,16 +50,16 @@ class PropertyPredictorTrainer(Trainer):
         # Task weights for multi-task learning
         if task_weights is None:
             task_weights = {
-                "qed": 1.0,  # Binary classification
-                "sa": 1.0,  # Regression [0,1]
-                "logp": 1.0,  # Regression [-1,1] (normalized)
-                "mw": 1.0,  # Regression [0,1]
+                "qed": 1.0,
+                "sa": 1.0,
+                "logp": 1.0,
+                "mw": 1.0,
             }
         self.task_weights = task_weights
 
-        # Loss functions for different tasks
+        # Loss functions for all tasks (QED is regression [0,1], not binary)
         self.loss_fns = {
-            "qed": nn.BCELoss(),
+            "qed": nn.MSELoss(),
             "sa": nn.MSELoss(),
             "logp": nn.MSELoss(),
             "mw": nn.MSELoss(),
@@ -77,8 +77,8 @@ class PropertyPredictorTrainer(Trainer):
             "val_sa_loss",
             "val_logp_loss",
             "val_mw_loss",
-            "val_qed_auc",
-            "val_qed_f1",
+            "val_qed_mae",
+            "val_qed_r2",
             "val_sa_mae",
             "val_sa_r2",
             "val_logp_mae",
@@ -215,30 +215,19 @@ class PropertyPredictorTrainer(Trainer):
             targets = np.array(all_targets[task])
 
             if len(preds) == 0:
-                continue  # Skip if no data for this task
+                continue
 
-            if task == "qed":  # Binary classification
-                try:
-                    val_metrics[f"val_{task}_auc"] = roc_auc_score(targets, preds)
-                    val_metrics[f"val_{task}_f1"] = f1_score(
-                        targets, (preds > 0.5).astype(int), zero_division=0,
-                    )
-                except Exception as e:
-                    logger.warning(
-                        f"Could not calculate {task} classification metrics: {e}"
-                    )
-                    val_metrics[f"val_{task}_auc"] = 0.0
-                    val_metrics[f"val_{task}_f1"] = 0.0
-            else:  # Regression tasks
-                val_metrics[f"val_{task}_mae"] = mean_absolute_error(targets, preds)
-                try:
-                    score = r2_score(targets, preds)
-                    val_metrics[f"val_{task}_r2"] = 0.0 if np.isnan(score) or np.isinf(score) else score
-                except Exception as e:
-                    logger.warning(
-                        f"Could not calculate {task} regression metrics: {e}"
-                    )
-                    val_metrics[f"val_{task}_r2"] = 0.0
+            # All tasks are regression (QED is continuous [0,1], SA [0,1],
+            # LogP [-1,1] normalized, MW [0,1] normalized)
+            val_metrics[f"val_{task}_mae"] = mean_absolute_error(targets, preds)
+            try:
+                score = r2_score(targets, preds)
+                val_metrics[f"val_{task}_r2"] = 0.0 if np.isnan(score) or np.isinf(score) else score
+            except Exception as e:
+                logger.warning(
+                    f"Could not calculate {task} regression metrics: {e}"
+                )
+                val_metrics[f"val_{task}_r2"] = 0.0
 
         return val_metrics
 
@@ -291,8 +280,8 @@ class PropertyPredictorTrainer(Trainer):
                 val_sa_loss=val_metrics.get("sa", 0.0),
                 val_logp_loss=val_metrics.get("logp", 0.0),
                 val_mw_loss=val_metrics.get("mw", 0.0),
-                val_qed_auc=val_metrics.get("val_qed_auc", 0.0),
-                val_qed_f1=val_metrics.get("val_qed_f1", 0.0),
+                val_qed_mae=val_metrics.get("val_qed_mae", 0.0),
+                val_qed_r2=val_metrics.get("val_qed_r2", 0.0),
                 val_sa_mae=val_metrics.get("val_sa_mae", 0.0),
                 val_sa_r2=val_metrics.get("val_sa_r2", 0.0),
                 val_logp_mae=val_metrics.get("val_logp_mae", 0.0),
@@ -307,8 +296,8 @@ class PropertyPredictorTrainer(Trainer):
                 f"Epoch {epoch + 1}/{epochs}: "
                 f"Train Loss: {train_metrics['total_loss']:.4f}, "
                 f"Val Loss: {val_metrics['total_loss']:.4f}, "
-                f"Val QED AUC: {val_metrics.get('val_qed_auc', 0.0):.4f}, "
-                f"Val QED F1: {val_metrics.get('val_qed_f1', 0.0):.4f}, "
+                f"Val QED MAE: {val_metrics.get('val_qed_mae', 0.0):.4f}, "
+                f"Val QED R²: {val_metrics.get('val_qed_r2', 0.0):.4f}, "
                 f"Val SA MAE: {val_metrics.get('val_sa_mae', 0.0):.4f}, "
                 f"Val LogP MAE: {val_metrics.get('val_logp_mae', 0.0):.4f}, "
                 f"Val MW MAE: {val_metrics.get('val_mw_mae', 0.0):.4f}"
