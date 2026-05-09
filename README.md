@@ -64,7 +64,7 @@ python -m cli train all --epochs 100 --gpu --lr 0.001
 python -m cli train --checkpoint-dir ./checkpoints
 ```
 
-Trained model checkpoints are saved to `artifacts/models/{dti,toxicity,vae,properties}/best_model.pt`.
+Trained model checkpoints are saved to `artifacts/models/{dti,toxicity,vae,property}/best_model.pt`.
 
 ---
 

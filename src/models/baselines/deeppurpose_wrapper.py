@@ -43,45 +43,48 @@ def _fingerprint_matrix(smiles_list, radius=2, n_bits=2048):
 
 
 def _run_rf_dti(dataset_name: str) -> Dict[str, float]:
-    """Run sklearn RandomForest on DTI regression task."""
+    """Run sklearn RandomForest on DTI regression task using real Morgan fingerprints."""
     from sklearn.ensemble import RandomForestRegressor
     from sklearn.metrics import mean_absolute_error, r2_score
 
-    from src.data.preparation.dti import DTIDatasetPreparer, DTIGraphDataset
-    from src.training.utils import create_data_loaders
+    from src.data.load.tdc import TDCDataLoader
+    from rdkit import Chem
 
-    prep = DTIDatasetPreparer()
-    data_list, splits, meta = prep.prepare_dti_dataset(dataset_name)
-    dataset = DTIGraphDataset(data_list)
-    _, _, test_loader = create_data_loaders(dataset, splits, dataset_type="dti")
+    tdc = TDCDataLoader()
+    raw = tdc.load_dti_data(dataset_name)
+    raw = raw[raw["Y"] < 10000].copy().dropna()
 
-    train_smiles, train_y, test_smiles, test_y = [], [], [], []
-    for idx in splits["train"]:
-        d = data_list[idx]
-        train_smiles.append(str(idx))
-        train_y.append(d.y.item())
-    for idx in splits["test"]:
-        d = data_list[idx]
-        test_smiles.append(str(idx))
-        test_y.append(d.y.item())
+    smiles_list = []
+    labels = []
+    for _, row in raw.iterrows():
+        smi = str(row["Drug"])
+        mol = Chem.MolFromSmiles(smi)
+        if mol is not None:
+            smiles_list.append(Chem.MolToSmiles(mol))
+            labels.append(float(row["Y"]))
 
-    all_smiles = []
-    for d in data_list:
-        all_smiles.append("CCO")
-    train_feats = np.random.randn(len(splits["train"]), 264)
-    test_feats = np.random.randn(len(splits["test"]), 264)
+    labels = np.array(labels, dtype=np.float32)
 
-    # DTIDatasetPreparer doesn't expose raw SMILES for featurization,
-    # so approximate with random features as a surrogate baseline
-    train_feats = np.random.randn(len(splits["train"]), 264)
-    test_feats = np.random.randn(len(splits["test"]), 264)
+    feats = _fingerprint_matrix(smiles_list, radius=2, n_bits=2048)
+    n = len(smiles_list)
+    indices = np.arange(n)
+    np.random.RandomState(42).shuffle(indices)
+    test_sz = int(n * 0.1)
+    _val_sz = int(n * 0.1)
+    test_idx = indices[:test_sz]
+    train_idx = indices[test_sz + _val_sz:]
+
+    train_feats = feats[train_idx]
+    test_feats = feats[test_idx]
+    train_y = labels[train_idx]
+    test_y = labels[test_idx]
 
     reg = RandomForestRegressor(n_estimators=100, random_state=42)
-    reg.fit(train_feats, np.array(train_y))
+    reg.fit(train_feats, train_y)
     preds = reg.predict(test_feats)
 
     return {
-        "rmse": float(np.sqrt(np.mean((np.array(test_y) - preds) ** 2))),
+        "rmse": float(np.sqrt(np.mean((test_y - preds) ** 2))),
         "mae": float(mean_absolute_error(test_y, preds)),
         "r2": float(r2_score(test_y, preds)),
     }

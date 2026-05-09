@@ -38,7 +38,7 @@ class PropertyPredictor:
         self._load_models(models_dir)
 
         if self._model is None:
-            raise ModelNotLoadedError(f"Property model not found in {models_dir}/properties/")
+            raise ModelNotLoadedError(f"Property model not found in {models_dir}/property/")
 
     def _load_models(self, models_dir: str) -> None:
         """Load property model and initialize featurizer."""
@@ -47,7 +47,7 @@ class PropertyPredictor:
 
         self._featurizer = MolecularFeaturizer()
 
-        model_path = Path(models_dir) / "properties" / "best_model.pt"
+        model_path = Path(models_dir) / "property" / "best_model.pt"
         if not model_path.exists():
             logger.error(f"Property model not found at {model_path}")
             return

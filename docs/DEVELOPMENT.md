@@ -94,7 +94,7 @@ trainer = PropertyPredictorTrainer(model, device)
 results = trainer.fit(
     train_loader, val_loader,
     epochs=80,
-    checkpoint_dir="artifacts/models/properties",
+    checkpoint_dir="artifacts/models/property",
 )
 ```
 

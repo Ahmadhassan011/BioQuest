@@ -79,16 +79,18 @@ All datasets split 80/10/10 train/val/test (scaffold split available via `use_sc
 - **toxicity.py**: ToxicityClassifier (540K params) — residual MLP + feature attention
 - **property.py**: PropertyPredictor (380K params) — multi-task shared encoder
 - **vae.py**: MoleculeVAE (600K params) — GRU encoder/decoder with reparameterization
-- **featurization.py**: Morgan fingerprints, RDKit descriptors, graph featurization
+- **featurization.py**: Morgan fingerprints, RDKit descriptors, graph featurization, ADMET properties, Lipinski Rule of Five
 - **attention.py**: MultiHeadAttention module
 - **registry.py**: ModelRegistry, checkpoint save/load
 - **loader.py**: ModelLoader, CustomModelPredictor, ModelEvaluator
+- **baselines/**: REINVENT and DeepPurpose surrogate wrappers (standalone benchmarking)
 
 ### src/training/
 - **base.py**: Base Trainer (optimizer, scheduler, early stopping)
 - **gnn_dti.py**: GNNDTITrainer (mixed precision, gradient accumulation)
 - **toxicity.py**: ToxicityClassifierTrainer (weighted BCE, AUC monitoring)
 - **property.py**: PropertyPredictorTrainer (multi-task losses)
+- **validator.py**: ModelValidator — input shape, prediction range, NaN, config, and gradient health checks
 - **vae.py**: MoleculeVAETrainer (KL annealing, reconstruction accuracy)
 - **utils.py**: create_data_loaders, convert_numpy_types, save_training_config
 
@@ -113,9 +115,9 @@ All datasets split 80/10/10 train/val/test (scaffold split available via `use_sc
 ### src/evaluation/
 - **metrics.py**: Regression (RMSE, MAE, R²) and classification (AUC, F1) metrics
 - **generation.py**: Molecule generation quality metrics (validity, uniqueness, novelty, diversity, KL divergence)
-- **admet.py**: ADMET property computation (HBA, HBD, TPSA, Lipinski Rule of Five) via RDKit
 - **reporter.py**: JSON evaluation reports with aggregate statistics (mean ± std)
-- **validator.py**: Input shape/sanity checks for models and predictions
+- **admet.py** *(stub)*: Re-exports `compute_admet_properties` etc. from `src.models.featurization`
+- **validator.py** *(stub)*: Re-exports `ModelValidator` from `src.training.validator`
 
 ### src/data/
 - **constants.py**: Amino acid constants, sequence utilities

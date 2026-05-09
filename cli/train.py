@@ -116,4 +116,4 @@ def _train_property(args) -> Dict:
     model = PropertyPredictor(input_dim=meta["mol_feature_dim"])
     trainer = PropertyPredictorTrainer(model, device, learning_rate=args.learning_rate)
     return trainer.fit(train_loader, val_loader, epochs=args.epochs,
-                       checkpoint_dir=f"{args.checkpoint_dir}/properties")
+                       checkpoint_dir=f"{args.checkpoint_dir}/property")

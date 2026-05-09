@@ -347,6 +347,64 @@ def _system_benchmark(
     return {}
 
 
+def _validate_scorecard(scorecard: Dict) -> None:
+    """Validate benchmark scorecard structure before serialisation."""
+    required_top = {"benchmark_version", "timestamp", "git_hash", "config",
+                    "predictive", "generative", "optimization", "ablation", "system"}
+    missing = required_top - set(scorecard.keys())
+    if missing:
+        raise ValueError(f"Scorecard missing required keys: {missing}")
+
+    cfg = scorecard.get("config", {})
+    if not isinstance(cfg.get("n_trials"), int):
+        raise TypeError(f"config.n_trials must be int, got {type(cfg.get('n_trials'))}")
+    if not isinstance(cfg.get("quick"), bool):
+        raise TypeError(f"config.quick must be bool, got {type(cfg.get('quick'))}")
+
+    for section in ("predictive", "generative", "optimization", "ablation", "system"):
+        if not isinstance(scorecard.get(section), dict):
+            raise TypeError(f"{section} must be a dict, got {type(scorecard.get(section))}")
+
+    for section in ("predictitive", "generative", "optimization"):
+        for task, metrics in scorecard.get(section, {}).items():
+            if isinstance(metrics, dict) and "mean" in metrics:
+                if not isinstance(metrics["mean"], (int, float)):
+                    raise TypeError(
+                        f"{section}.{task}.mean must be numeric, got {type(metrics['mean'])}"
+                    )
+
+
+def _generate_evaluation_reports(scorecard: Dict, output_dir: str = "artifacts/reports") -> None:
+    """Generate per-section JSON reports using EvaluationReporter."""
+    from src.evaluation.reporter import EvaluationReporter
+
+    reporter = EvaluationReporter(output_dir=output_dir)
+    model_name = f"BioQuest_{scorecard.get('git_hash', 'unknown')}"
+
+    for section in ("predictive", "generative", "optimization", "ablation", "system"):
+        data = scorecard.get(section, {})
+        if not data:
+            continue
+        if section in ("predictive",):
+            for task, metrics in data.items():
+                if isinstance(metrics, dict):
+                    reporter.generate_json_report(metrics, model_name, task)
+            reporter.generate_summary_report(
+                [{"metrics": m, "dataset": t} for t, m in data.items() if isinstance(m, dict)],
+                output_filename=f"{section}_summary.json",
+            )
+        elif section == "generative":
+            reporter.generate_json_report(data, model_name, section)
+        else:
+            for mode, metrics in data.items():
+                if isinstance(metrics, dict):
+                    reporter.generate_json_report(
+                        metrics, model_name, f"{section}_{mode}"
+                    )
+
+    reporter.print_report(scorecard.get("predictive", {}), model_name)
+
+
 def _scorecard(
     predictive: Dict,
     generative: Dict,
@@ -388,10 +446,11 @@ def _statistical_comparison(
     baseline_metrics: Dict[str, float],
     n_trials_bioquest: int = 3,
 ) -> Dict[str, Any]:
-    """Compare BioQuest vs baseline metrics using t-test approximation.
+    """Compare BioQuest vs baseline metrics using a direction-based heuristic.
 
-    Since benchmark evaluates a single checkpoint, we approximate variance
-    from the per-datapoint bootstrap. Returns effect direction and p-value.
+    Computes the raw difference (BioQuest − baseline) per metric and applies
+    a higher-is-better sign check. Returns effect direction only — no
+    statistical testing is performed.
     """
 
     comparison = {}
@@ -574,11 +633,15 @@ def main():
         args.n_trials, args.quick,
     )
 
+    _validate_scorecard(scorecard)
+
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as f:
         json.dump(scorecard, f, indent=2, sort_keys=False)
     logger.info(f"Benchmark scorecard saved to {output_path}")
+
+    _generate_evaluation_reports(scorecard)
 
     print("\n" + "=" * 60)
     print("BIOQUEST BENCHMARK SCORECARD")
