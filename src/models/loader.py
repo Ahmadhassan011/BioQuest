@@ -545,6 +545,7 @@ class ModelEvaluator:
     ) -> Dict[str, float]:
         """Evaluate toxicity model on test set."""
         from sklearn.metrics import roc_auc_score, accuracy_score, f1_score
+        from src.evaluation.metrics import _check_binary_classes
 
         model.eval()
         all_preds = []
@@ -559,10 +560,12 @@ class ModelEvaluator:
 
         all_preds = np.array(all_preds)
         all_labels = np.array(all_labels)
+        binary_preds = (all_preds > 0.5).astype(int)
 
-        auc = roc_auc_score(all_labels, all_preds)
-        accuracy = accuracy_score(all_labels, (all_preds > 0.5).astype(int))
-        f1 = f1_score(all_labels, (all_preds > 0.5).astype(int))
+        both_classes = _check_binary_classes(all_labels)
+        auc = roc_auc_score(all_labels, all_preds) if both_classes else 0.0
+        accuracy = accuracy_score(all_labels, binary_preds)
+        f1 = f1_score(all_labels, binary_preds, zero_division=0)
 
         return {
             "auc": float(auc),

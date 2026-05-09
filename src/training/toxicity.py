@@ -168,6 +168,7 @@ class ToxicityClassifierTrainer(Trainer):
         try:
             f1 = f1_score(all_labels, binary_preds, zero_division=0)
             mcc = matthews_corrcoef(all_labels, binary_preds)
+            mcc = 0.0 if np.isnan(mcc) else mcc
         except Exception as e:
             logger.warning(f"Could not calculate classification metrics: {e}")
             f1 = mcc = 0.0

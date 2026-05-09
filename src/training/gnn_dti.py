@@ -56,7 +56,7 @@ class GNNDTITrainer(Trainer):
                 "train_loss",
                 "val_loss",
                 "val_mae",
-                "val_accuracy",
+                "val_r2",
                 "learning_rate",
             ]
         )
@@ -157,7 +157,7 @@ class GNNDTITrainer(Trainer):
         return {
             "loss": avg_loss,
             "mae": mae,
-            "accuracy": r2_score,
+            "r2": r2_score,
         }
 
     def fit(
@@ -213,7 +213,7 @@ class GNNDTITrainer(Trainer):
                 train_loss=train_loss,
                 val_loss=val_metrics["loss"],
                 val_mae=val_metrics["mae"],
-                val_accuracy=val_metrics["accuracy"],
+                val_r2=val_metrics["r2"],
                 learning_rate=lr,
             )
 
@@ -221,7 +221,7 @@ class GNNDTITrainer(Trainer):
                 f"Epoch {epoch + 1}/{epochs} | "
                 f"Loss: {train_loss:.4f} | "
                 f"MAE: {val_metrics['mae']:.4f} | "
-                f"R²: {val_metrics['accuracy']:.4f}"
+                f"R²: {val_metrics['r2']:.4f}"
             )
 
             # Early stopping check

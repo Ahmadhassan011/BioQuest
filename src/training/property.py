@@ -221,7 +221,7 @@ class PropertyPredictorTrainer(Trainer):
                 try:
                     val_metrics[f"val_{task}_auc"] = roc_auc_score(targets, preds)
                     val_metrics[f"val_{task}_f1"] = f1_score(
-                        targets, (preds > 0.5).astype(int)
+                        targets, (preds > 0.5).astype(int), zero_division=0,
                     )
                 except Exception as e:
                     logger.warning(
@@ -232,7 +232,8 @@ class PropertyPredictorTrainer(Trainer):
             else:  # Regression tasks
                 val_metrics[f"val_{task}_mae"] = mean_absolute_error(targets, preds)
                 try:
-                    val_metrics[f"val_{task}_r2"] = r2_score(targets, preds)
+                    score = r2_score(targets, preds)
+                    val_metrics[f"val_{task}_r2"] = 0.0 if np.isnan(score) or np.isinf(score) else score
                 except Exception as e:
                     logger.warning(
                         f"Could not calculate {task} regression metrics: {e}"
