@@ -37,7 +37,7 @@ class ModelRegistry:
         models = {
             "gnn_dti": GNNDTIPredictor,
             "toxicity": ToxicityClassifier,
-            "properties": PropertyPredictor,
+            "property": PropertyPredictor,
             "vae": MoleculeVAE,
         }
 
@@ -52,7 +52,7 @@ class ModelRegistry:
     @staticmethod
     def list_models() -> List[str]:
         """List all available models."""
-        return ["gnn_dti", "toxicity", "properties", "vae"]
+        return ["gnn_dti", "toxicity", "property", "vae"]
 
 
 def create_model_checkpoint(

@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 from typing import Dict
 from torch.utils.data import TensorDataset
+from src.data.tokenizer import VOCAB_SIZE
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -194,7 +195,7 @@ def train_vae_model(
 
     # Initialize model
     model = MoleculeVAE(
-        vocab_size=len(preparer.smiles_chars),
+        vocab_size=VOCAB_SIZE,
         latent_dim=64,
     )
     logger.info(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
@@ -217,7 +218,7 @@ def train_property_model(
     batch_size: int = 32,
     epochs: int = 50,
     learning_rate: float = 1e-3,
-    checkpoint_dir: str = "artifacts/models/properties",
+    checkpoint_dir: str = "artifacts/models/property",
     use_gpu: bool = False,
     dataset: str = "Lipophilicity_AstraZeneca",
 ) -> Dict:
@@ -358,7 +359,7 @@ def main():
             batch_size=args.batch_size,
             epochs=args.epochs,
             learning_rate=args.learning_rate,
-            checkpoint_dir=f"{args.checkpoint_dir}/properties",
+            checkpoint_dir=f"{args.checkpoint_dir}/property",
             use_gpu=args.use_gpu,
             dataset=args.prop_dataset,
         )

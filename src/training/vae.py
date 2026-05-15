@@ -254,7 +254,7 @@ class MoleculeVAETrainer(Trainer):
         val_loader: DataLoader,
         epochs: int = 100,
         early_stopping_patience: int = 15,
-        checkpoint_dir: str = "artifacts/checkpoints/vae",
+        checkpoint_dir: str = "artifacts/models/vae",
     ) -> Dict[str, Any]:
         """
         Train the VAE model.

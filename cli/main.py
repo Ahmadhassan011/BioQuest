@@ -88,7 +88,7 @@ def run_optimization(
     for iteration in range(1, max_iterations + 1):
         logger.info(f"Iteration {iteration}/{max_iterations}")
 
-        terminate, reason = orchestrator.run_iteration(
+        should_continue, reason = orchestrator.run_iteration(
             seeds=seeds,
             objectives=objectives,
             iteration=iteration,
@@ -96,7 +96,7 @@ def run_optimization(
             batch_size=batch_size,
         )
 
-        if terminate:
+        if not should_continue:
             logger.info(f"Termination: {reason}")
             break
 

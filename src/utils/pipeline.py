@@ -59,5 +59,5 @@ class PipelineConfig:
         return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
 
     def model_checkpoint_dir(self, model: str) -> str:
-        mapping = {"dti": "dti", "toxicity": "toxicity", "vae": "vae", "property": "properties"}
+        mapping = {"dti": "dti", "toxicity": "toxicity", "vae": "vae", "property": "property"}
         return str(Path(self.checkpoint_dir) / mapping.get(model, model))

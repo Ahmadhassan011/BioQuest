@@ -15,7 +15,7 @@ class TestModelRegistry:
 
         assert "gnn_dti" in models
         assert "toxicity" in models
-        assert "properties" in models
+        assert "property" in models
         assert "vae" in models
 
     def test_registry_get_model_unknown(self):

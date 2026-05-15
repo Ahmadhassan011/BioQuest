@@ -194,7 +194,7 @@ class ToxicityClassifierTrainer(Trainer):
         val_loader: DataLoader,
         epochs: int = 50,
         early_stopping_patience: int = 10,
-        checkpoint_dir: str = "artifacts/checkpoints/toxicity",
+        checkpoint_dir: str = "artifacts/models/toxicity",
     ) -> Dict[str, Any]:
         """
         Train toxicity model with early stopping.

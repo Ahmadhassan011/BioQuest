@@ -30,6 +30,13 @@ def run(args) -> None:
         args.checkpoint_dir = cfg.checkpoint_dir
         args.assay = cfg.tox_assay
         args.chembl_frac = cfg.chembl_frac
+        args.dti_dataset = cfg.dti_dataset
+        args.prop_dataset = cfg.prop_dataset
+        args.val_split = cfg.val_split
+        args.test_split = cfg.test_split
+        args.use_scaffold_split = cfg.use_scaffold_split
+        args.gradient_accumulation_steps = cfg.gradient_accumulation_steps
+        args.kl_anneal_epochs = cfg.kl_anneal_epochs
 
     models = set(args.models)
     if "all" in models:
@@ -57,6 +64,11 @@ def run(args) -> None:
            batch_size=args.batch_size, learning_rate=args.learning_rate,
            use_gpu=args.use_gpu, checkpoint_dir=args.checkpoint_dir,
            tox_assay=args.assay, chembl_frac=args.chembl_frac,
+           dti_dataset=args.dti_dataset, prop_dataset=args.prop_dataset,
+           val_split=args.val_split, test_split=args.test_split,
+           use_scaffold_split=args.use_scaffold_split,
+           gradient_accumulation_steps=args.gradient_accumulation_steps,
+           kl_anneal_epochs=args.kl_anneal_epochs,
            ).save(args.save_config)
 
 
@@ -65,7 +77,7 @@ def _train_dti(args) -> Dict:
     from src.training.gnn_dti import GNNDTITrainer
     device = torch.device("cuda" if args.use_gpu and torch.cuda.is_available() else "cpu")
     prep = DTIDatasetPreparer()
-    data_list, splits, meta = prep.prepare_dti_dataset(dataset_name="DAVIS")
+    data_list, splits, meta = prep.prepare_dti_dataset(dataset_name=args.dti_dataset)
     train_loader, val_loader, _ = create_data_loaders(
         DTIGraphDataset(data_list), splits, batch_size=args.batch_size, dataset_type="dti")
     model = GNNDTIPredictor(atom_feature_dim=meta["atom_feature_dim"])
@@ -110,7 +122,7 @@ def _train_property(args) -> Dict:
     from src.training.property import PropertyPredictorTrainer
     device = torch.device("cuda" if args.use_gpu and torch.cuda.is_available() else "cpu")
     prep = PropertyDatasetPreparer()
-    features, targets_dict, splits, meta = prep.prepare_property_dataset(dataset_name="Lipophilicity_AstraZeneca")
+    features, targets_dict, splits, meta = prep.prepare_property_dataset(dataset_name=args.prop_dataset)
     train_loader, val_loader, _ = create_data_loaders(
         PropertyPredictionDataset(features, targets_dict),
         splits, batch_size=args.batch_size, dataset_type="property")

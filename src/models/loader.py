@@ -179,14 +179,14 @@ class ModelLoader:
     def load_property_model(
         self,
         model_path: Optional[str] = None,
-        model_name: str = "properties_best",
+        model_name: str = "property_best",
     ) -> PropertyPredictor:
         """Load multi-task property prediction model."""
         if model_name in self.loaded_models:
             return self.loaded_models[model_name]
 
         if model_path is None:
-            model_path = self.models_dir / "properties" / "best_model.pt"
+            model_path = self.models_dir / "property" / "best_model.pt"
 
         model_path = Path(model_path)
 
@@ -264,7 +264,7 @@ class CustomModelPredictor:
         # Load models from subdirectories
         dti_path = Path(models_dir) / "dti" / "best_model.pt"
         toxicity_path = Path(models_dir) / "toxicity" / "best_model.pt"
-        property_path = Path(models_dir) / "properties" / "best_model.pt"
+        property_path = Path(models_dir) / "property" / "best_model.pt"
 
         self.dti_model = self.loader.load_dti_model(model_path=str(dti_path))
         self.toxicity_model = self.loader.load_toxicity_model(

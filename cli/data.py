@@ -61,6 +61,7 @@ def run_prepare(args) -> None:
             tox_assay=args.assay,
             chembl_frac=args.chembl_frac,
             prop_dataset=args.prop,
+            use_scaffold_split=args.scaffold,
         )
         cfg.save(args.save_config)
 

@@ -365,7 +365,7 @@ def _validate_scorecard(scorecard: Dict) -> None:
         if not isinstance(scorecard.get(section), dict):
             raise TypeError(f"{section} must be a dict, got {type(scorecard.get(section))}")
 
-    for section in ("predictitive", "generative", "optimization"):
+    for section in ("predictive", "generative", "optimization"):
         for task, metrics in scorecard.get(section, {}).items():
             if isinstance(metrics, dict) and "mean" in metrics:
                 if not isinstance(metrics["mean"], (int, float)):

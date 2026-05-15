@@ -44,6 +44,13 @@ def main():
     tr.add_argument("--checkpoint-dir", default="artifacts/models")
     tr.add_argument("--assay", default="NR-AR", help="Tox21 assay")
     tr.add_argument("--chembl-frac", type=float, default=0.052)
+    tr.add_argument("--dti-dataset", default="DAVIS", help="DTI dataset name")
+    tr.add_argument("--prop-dataset", default="Lipophilicity_AstraZeneca", help="Property dataset name")
+    tr.add_argument("--val-split", type=float, default=0.1, help="Validation split ratio")
+    tr.add_argument("--test-split", type=float, default=0.1, help="Test split ratio")
+    tr.add_argument("--use-scaffold", action="store_true", dest="use_scaffold_split", help="Use scaffold split")
+    tr.add_argument("--gradient-accumulation-steps", type=int, default=1)
+    tr.add_argument("--kl-anneal-epochs", type=int, default=50)
     tr.add_argument("--config", help="Load PipelineConfig JSON")
     tr.add_argument("--save-config", help="Save pipeline config to path")
 

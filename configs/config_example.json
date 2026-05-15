@@ -34,7 +34,7 @@
   },
   "predictor": {
     "use_gpu": false,
-    "models_dir": "trained_models",
+    "models_dir": "artifacts/models",
     "batch_predict": true
   },
   "evaluation": {

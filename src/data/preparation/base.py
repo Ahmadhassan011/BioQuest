@@ -82,7 +82,7 @@ class DatasetResult:
     data: Union[List, np.ndarray, torch.Tensor]
     splits: Dict[str, Any]
     metadata: Dict[str, Any]
-    data_type: str  # "dti", "tox21", "properties", "vae"
+    data_type: str  # "dti", "tox21", "property", "vae"
 
     @property
     def train_size(self) -> int:

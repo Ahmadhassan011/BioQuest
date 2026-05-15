@@ -166,7 +166,7 @@ class GNNDTITrainer(Trainer):
         val_loader: DataLoader,
         epochs: int = 50,
         early_stopping_patience: int = 10,
-        checkpoint_dir: str = "artifacts/checkpoints/dti",
+        checkpoint_dir: str = "artifacts/models/dti",
         gradient_accumulation_steps: int = 1,
     ) -> Dict[str, Any]:
         """
