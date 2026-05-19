@@ -122,12 +122,13 @@ class DTIPredictor:
         except Exception as e:
             raise RuntimeError(f"DTI prediction failed: {e}") from e
 
-    def batch_predict(self, smiles_list: List[str]) -> np.ndarray:
+    def batch_predict(self, smiles_list: List[str], batch_size: int = 32) -> np.ndarray:
         """
         Predict binding affinities for batch of molecules.
 
         Args:
             smiles_list: List of SMILES strings
+            batch_size: Number of molecules to process at once (default 32)
 
         Returns:
             Array of predicted affinities
@@ -139,24 +140,30 @@ class DTIPredictor:
         from torch_geometric.data import Batch
 
         try:
-            data_list = [self._featurizer.featurize_molecule_graph(s) for s in smiles_list]
-            valid_data = [d for d in data_list if d is not None]
-
-            if not valid_data:
-                raise ValueError("All SMILES strings are invalid")
-
-            batched_graph = Batch.from_data_list(valid_data).to(self.device)
-            batch_size = batched_graph.num_graphs
-            batched_protein = self._protein_features.repeat(batch_size, 1)
-
-            with torch.no_grad():
-                affinities = self._model(batched_graph, batched_protein)
-
-            results = affinities.cpu().numpy().flatten()
-
-            valid_indices = [i for i, d in enumerate(data_list) if d is not None]
             output = np.full(len(smiles_list), np.nan)
-            output[valid_indices] = results
+
+            for start_idx in range(0, len(smiles_list), batch_size):
+                chunk = smiles_list[start_idx:start_idx + batch_size]
+                data_list = [self._featurizer.featurize_molecule_graph(s) for s in chunk]
+                valid_data = [d for d in data_list if d is not None]
+
+                if not valid_data:
+                    continue
+
+                batched_graph = Batch.from_data_list(valid_data).to(self.device)
+                num_valid = batched_graph.num_graphs
+                batched_protein = self._protein_features.repeat(num_valid, 1)
+
+                with torch.no_grad():
+                    affinities = self._model(batched_graph, batched_protein)
+
+                results = affinities.cpu().numpy().flatten()
+                valid_indices_in_chunk = [i for i, d in enumerate(data_list) if d is not None]
+                for local_idx, global_idx in enumerate(valid_indices_in_chunk):
+                    output[start_idx + global_idx] = results[local_idx]
+
+            if np.all(np.isnan(output)):
+                raise ValueError("All SMILES strings are invalid")
 
             return output
 

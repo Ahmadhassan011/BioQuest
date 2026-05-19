@@ -367,11 +367,24 @@ def _validate_scorecard(scorecard: Dict) -> None:
 
     for section in ("predictive", "generative", "optimization"):
         for task, metrics in scorecard.get(section, {}).items():
-            if isinstance(metrics, dict) and "mean" in metrics:
+            if not isinstance(metrics, dict):
+                continue
+            # Flat aggregated metric: {"mean": 0.5, "std": 0.01, ...}
+            if "mean" in metrics:
                 if not isinstance(metrics["mean"], (int, float)):
                     raise TypeError(
-                        f"{section}.{task}.mean must be numeric, got {type(metrics['mean'])}"
+                        f"{section}.{task}.mean must be numeric, "
+                        f"got {type(metrics['mean'])}"
                     )
+                continue
+            # Nested task container: {"accuracy": {"mean": 0.5, ...}, ...}
+            for sub_name, sub_metrics in metrics.items():
+                if isinstance(sub_metrics, dict) and "mean" in sub_metrics:
+                    if not isinstance(sub_metrics["mean"], (int, float)):
+                        raise TypeError(
+                            f"{section}.{task}.{sub_name}.mean must be numeric, "
+                            f"got {type(sub_metrics['mean'])}"
+                        )
 
 
 def _generate_evaluation_reports(scorecard: Dict, output_dir: str = "artifacts/reports") -> None:
@@ -440,7 +453,6 @@ def _scorecard(
 def _statistical_comparison(
     bioquest_metrics: Dict[str, float],
     baseline_metrics: Dict[str, float],
-    n_trials_bioquest: int = 3,
 ) -> Dict[str, Any]:
     """Compare BioQuest vs baseline metrics using a direction-based heuristic.
 

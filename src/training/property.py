@@ -217,8 +217,7 @@ class PropertyPredictorTrainer(Trainer):
             if len(preds) == 0:
                 continue
 
-            # Filter out NaN predictions
-            valid_mask = ~np.isnan(preds)
+            valid_mask = ~(np.isnan(preds) | np.isnan(targets))
             if not valid_mask.any():
                 val_metrics[f"val_{task}_mae"] = 0.0
                 val_metrics[f"val_{task}_r2"] = 0.0
@@ -239,6 +238,9 @@ class PropertyPredictorTrainer(Trainer):
                 val_metrics[f"val_{task}_r2"] = 0.0
 
         return val_metrics
+
+    def validate(self, val_loader: DataLoader) -> Dict[str, float]:
+        return self.validate_epoch(val_loader)
 
     def fit(
         self,

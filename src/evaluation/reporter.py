@@ -114,12 +114,12 @@ class EvaluationReporter:
         logger.info(f"Summary report saved to {filepath}")
         return str(filepath)
 
-    def print_report(self, metrics: Dict[str, float], model_name: str) -> None:
+    def print_report(self, metrics: Dict, model_name: str) -> None:
         """
         Print evaluation report to console.
 
         Args:
-            metrics: Evaluation metrics
+            metrics: Evaluation metrics (flat or nested with {mean, std})
             model_name: Name of the model
         """
         print(f"\n{'=' * 50}")
@@ -129,6 +129,16 @@ class EvaluationReporter:
         for key, value in metrics.items():
             if isinstance(value, float):
                 print(f"  {key}: {value:.4f}")
+            elif isinstance(value, dict) and "mean" in value:
+                print(f"  {key}: {value['mean']:.4f} \u00b1 {value.get('std', 0):.4f}")
+            elif isinstance(value, dict):
+                for sub_key, sub_val in value.items():
+                    if isinstance(sub_val, dict) and "mean" in sub_val:
+                        print(f"  {key}.{sub_key}: {sub_val['mean']:.4f} \u00b1 {sub_val.get('std', 0):.4f}")
+                    elif isinstance(sub_val, float):
+                        print(f"  {key}.{sub_key}: {sub_val:.4f}")
+                    else:
+                        print(f"  {key}.{sub_key}: {sub_val}")
             else:
                 print(f"  {key}: {value}")
 
