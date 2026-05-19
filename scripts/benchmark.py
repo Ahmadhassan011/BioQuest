@@ -29,6 +29,8 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 warnings.filterwarnings("ignore")
 
+from src.utils.run import create_run, resolve_models_dir
+
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger("benchmark")
 
@@ -516,11 +518,15 @@ def _baseline_benchmark(models_dir: str) -> Dict[str, Any]:
 
 def main():
     parser = argparse.ArgumentParser(description="BioQuest Benchmark Suite")
-    parser.add_argument("--models-dir", default="artifacts/models")
+    parser.add_argument("--models-dir", default=None,
+                        help="Models directory (default: resolve latest run)")
     parser.add_argument("--use-gpu", action="store_true")
     parser.add_argument("--quick", action="store_true", help="1 trial, 2 assays")
+    parser.add_argument("--run-name", default=None,
+                        help="Explicit run name (auto-generated timestamp if omitted)")
     parser.add_argument(
-        "--output", default="artifacts/benchmark_scorecard.json"
+        "--output", default=None,
+        help="Scorecard output path (default: run_dir/benchmark_scorecard.json)"
     )
     parser.add_argument("--n-trials", type=int, default=N_TRIALS_DEFAULT)
     parser.add_argument("--predictive-only", action="store_true")
@@ -542,6 +548,21 @@ def main():
         or args.ablation_only
         or args.system_only
     )
+
+    # Create run directory for this benchmark session (output reports go here).
+    # Do NOT update the latest symlink — it should remain pointing to the most
+    # recent training run so that inference and subsequent benchmarks find the
+    # correct set of models.
+    run_dir = create_run(run_name=args.run_name, update_latest=False)
+    logger.info("Benchmark run directory: %s", run_dir)
+
+    # Resolve models: prefer explicit --models-dir, else latest run
+    if args.models_dir is None:
+        models_resolved = resolve_models_dir("artifacts/models")
+        logger.info("Using models from: %s", models_resolved)
+        args.models_dir = models_resolved
+    args.output = args.output or str(run_dir / "benchmark_scorecard.json")
+    reports_dir = str(run_dir / "reports")
 
     predictive: Dict = {}
     generative: Dict = {}
@@ -649,7 +670,14 @@ def main():
         json.dump(scorecard, f, indent=2, sort_keys=False)
     logger.info(f"Benchmark scorecard saved to {output_path}")
 
-    _generate_evaluation_reports(scorecard)
+    # Also save a copy at the top-level artifacts/benchmark_scorecard.json for quick access
+    top_scorecard = Path("artifacts/benchmark_scorecard.json")
+    top_scorecard.parent.mkdir(parents=True, exist_ok=True)
+    with open(top_scorecard, "w") as f:
+        json.dump(scorecard, f, indent=2, sort_keys=False)
+    logger.info(f"Top-level scorecard updated at {top_scorecard}")
+
+    _generate_evaluation_reports(scorecard, output_dir=reports_dir)
 
     print("\n" + "=" * 60)
     print("BIOQUEST BENCHMARK SCORECARD")

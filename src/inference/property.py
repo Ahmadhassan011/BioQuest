@@ -10,6 +10,8 @@ import numpy as np
 import torch
 from pathlib import Path
 
+from ..utils.run import resolve_models_dir
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,6 +37,7 @@ class PropertyPredictor:
         self.device = torch.device("cuda" if (use_gpu and torch.cuda.is_available()) else "cpu")
         self._model = None
         self._featurizer = None
+        models_dir = resolve_models_dir(models_dir)
         self._load_models(models_dir)
 
         if self._model is None:

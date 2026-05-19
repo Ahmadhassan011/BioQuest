@@ -43,6 +43,7 @@ from src.training.utils import (
     create_data_loaders,
     save_training_config,
 )
+from src.utils.run import create_run
 
 
 # Configure logging
@@ -268,6 +269,12 @@ def main():
     """Main training entry point."""
     parser = argparse.ArgumentParser(description="Train custom models for BioQuest")
     parser.add_argument(
+        "--run-name",
+        default=None,
+        help="Explicit run name (auto-generated timestamp if omitted)",
+
+    )
+    parser.add_argument(
         "--models",
         nargs="+",
         choices=["dti", "toxicity", "vae", "property", "all"],
@@ -312,11 +319,17 @@ def main():
 
     args = parser.parse_args()
 
+    # Create run directory for this training session
+    run_dir = create_run(run_name=args.run_name)
+    checkpoint_dir = str(run_dir / "models")
+    args.checkpoint_dir = checkpoint_dir
+
     models_to_train = set(args.models)
     if args.all or "all" in models_to_train:
         models_to_train = {"dti", "toxicity", "vae", "property"}  # Added "property"
 
     logger.info(f"Training models: {', '.join(models_to_train)}")
+    logger.info(f"Run directory: {run_dir}")
 
     all_results = {}
 
@@ -365,8 +378,8 @@ def main():
         )
         all_results["property"] = prop_results
 
-    # Save final summary
-    summary_path = Path(args.checkpoint_dir) / "training_summary.json"
+    # Save final summary inside the run directory
+    summary_path = run_dir / "training_summary.json"
     save_training_config(all_results, str(summary_path))
 
     logger.info("=" * 80)

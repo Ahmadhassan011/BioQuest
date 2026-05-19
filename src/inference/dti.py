@@ -10,6 +10,8 @@ import numpy as np
 import torch
 from pathlib import Path
 
+from ..utils.run import resolve_models_dir
+
 logger = logging.getLogger(__name__)
 
 
@@ -38,6 +40,7 @@ class DTIPredictor:
         self._model = None
         self._featurizer = None
         self._protein_features = None
+        models_dir = resolve_models_dir(models_dir)
         self._load_models(models_dir)
 
         if self._model is None:

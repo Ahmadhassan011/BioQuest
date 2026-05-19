@@ -15,11 +15,16 @@ from src.data.preparation.toxicity import Tox21DatasetPreparer
 from src.data.preparation.vae import VAEDatasetPreparer
 from src.data.preparation.property import PropertyDatasetPreparer, PropertyPredictionDataset
 from src.training.utils import create_data_loaders, save_training_config
+from src.utils.run import create_run
 
 logger = logging.getLogger(__name__)
 
 
 def run(args) -> None:
+    # Create run directory for this training session
+    run_dir = create_run()
+    checkpoint_dir = str(run_dir / "models")
+    args.checkpoint_dir = checkpoint_dir
     if args.config:
         from src.utils.pipeline import PipelineConfig
         cfg = PipelineConfig.load(args.config)
@@ -54,7 +59,7 @@ def run(args) -> None:
     if "property" in models:
         results["property"] = _train_property(args)
 
-    summary = Path(args.checkpoint_dir) / "training_summary.json"
+    summary = run_dir / "training_summary.json"
     save_training_config(results, str(summary))
     logger.info(f"Done. Summary: {summary}")
 

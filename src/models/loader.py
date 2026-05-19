@@ -16,6 +16,7 @@ from .gnn_dti import GNNDTIPredictor
 from .toxicity import ToxicityClassifier
 from .property import PropertyPredictor
 from .featurization import MolecularFeaturizer
+from ..utils.run import resolve_models_dir
 from torch_geometric.data import Batch
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,7 @@ class ModelLoader:
             models_dir: Directory containing trained models
             use_gpu: Whether to use GPU if available
         """
+        models_dir = resolve_models_dir(models_dir)
         self.models_dir = Path(models_dir)
         self.models_dir.mkdir(parents=True, exist_ok=True)
 
@@ -258,6 +260,7 @@ class CustomModelPredictor:
             "cuda" if (use_gpu and torch.cuda.is_available()) else "cpu"
         )
 
+        models_dir = resolve_models_dir(models_dir)
         self.loader = ModelLoader(models_dir=models_dir, use_gpu=use_gpu)
         self.featurizer = MolecularFeaturizer()
 

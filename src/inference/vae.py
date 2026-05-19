@@ -10,6 +10,7 @@ import torch
 from pathlib import Path
 
 from src.data.tokenizer import indices_to_smiles, smiles_to_indices, VOCAB_SIZE
+from src.utils.run import resolve_models_dir
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,7 @@ class VAEGenerator:
         """
         self.device = torch.device("cuda" if (use_gpu and torch.cuda.is_available()) else "cpu")
         self._model = None
+        models_dir = resolve_models_dir(models_dir)
         self._load_models(models_dir)
 
     def _load_models(self, models_dir: str) -> None:
