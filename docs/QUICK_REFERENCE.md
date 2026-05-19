@@ -16,9 +16,16 @@ python -m cli.main --help
 ```bash
 python -m cli prepare all              # prepare all datasets
 python -m cli prepare dti --scaffold   # prepare with scaffold split
+python -m cli prepare property --prop Lipophilicity_AstraZeneca  # custom dataset
+python -m cli prepare toxicity --assay NR-AR                    # custom assay
+python -m cli prepare all --save-config my_config.json          # save config
 python -m cli train                    # train all models (default)
 python -m cli train dti vae           # train specific models
 python -m cli train all --epochs 100 --gpu
+python -m cli train dti --dti-dataset KIBA  # override DTI dataset
+python -m cli train property --prop-dataset Lipophilicity_AstraZeneca
+python -m cli train all --use-scaffold --val-split 0.15
+python -m cli train vae --kl-anneal-epochs 30 --gradient-accumulation-steps 2
 python -m cli cache                    # show cached datasets
 ```
 

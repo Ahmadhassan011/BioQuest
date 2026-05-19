@@ -116,8 +116,10 @@ train_loader, val_loader, _ = create_data_loaders(
     dataset, splits, batch_size=64, dataset_type="vae"
 )
 
+from src.data.tokenizer import VOCAB_SIZE
+
 model = MoleculeVAE(
-    vocab_size=len(preparer.smiles_chars),
+    vocab_size=VOCAB_SIZE,
     latent_dim=64,
 )
 trainer = MoleculeVAETrainer(model, device, kl_anneal_epochs=50)

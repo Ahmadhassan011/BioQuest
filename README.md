@@ -62,6 +62,14 @@ python -m cli train all --epochs 100 --gpu --lr 0.001
 
 # Custom checkpoint directory
 python -m cli train --checkpoint-dir ./checkpoints
+
+# Override datasets (defaults: DAVIS, Lipophilicity_AstraZeneca)
+python -m cli train dti --dti-dataset KIBA
+python -m cli train property --prop-dataset Lipophilicity_AstraZeneca
+
+# Custom splits and advanced options
+python -m cli train all --val-split 0.15 --test-split 0.15 --use-scaffold
+python -m cli train vae --kl-anneal-epochs 30 --gradient-accumulation-steps 2
 ```
 
 Trained model checkpoints are saved to `artifacts/models/{dti,toxicity,vae,property}/best_model.pt`.
@@ -80,8 +88,13 @@ python -m cli prepare property
 # Prepare all datasets at once
 python -m cli prepare all
 
-# With scaffold split
+# With scaffold split and custom dataset
 python -m cli prepare dti --scaffold
+python -m cli prepare property --prop Lipophilicity_AstraZeneca
+python -m cli prepare toxicity --assay NR-AR
+
+# Save config for reproducibility
+python -m cli prepare all --save-config experiments/run1.json
 
 # Show cached datasets
 python -m cli cache
